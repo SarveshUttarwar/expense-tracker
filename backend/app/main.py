@@ -80,7 +80,12 @@ def goals_summary(user_id: int, month: int, year: int):
 
 @app.get("/categories")
 def list_categories(user_id: int):
-    return crud.get_categories(user_id)
+    cats = crud.get_categories(user_id)
+    if not cats:
+        # User has no categories yet — seed defaults now
+        crud.seed_categories_for_user(user_id)
+        cats = crud.get_categories(user_id)
+    return cats
 
 
 @app.delete("/categories/{category_id}")

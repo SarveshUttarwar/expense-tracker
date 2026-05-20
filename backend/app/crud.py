@@ -1,6 +1,18 @@
 from app.database import get_db, DEFAULT_CATEGORIES
 
 
+def seed_categories_for_user(user_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    for name in DEFAULT_CATEGORIES:
+        cursor.execute("SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s", (name, user_id))
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO categories (name, user_id) VALUES (%s, %s)", (name, user_id))
+    db.commit()
+    cursor.close()
+    db.close()
+
+
 # =====================================================
 # AUTH
 # =====================================================
