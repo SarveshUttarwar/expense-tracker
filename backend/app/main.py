@@ -5,10 +5,15 @@ from app.schemas import GoalCreate, LoginRequest, ExpenseCreate, SearchQuery
 from app import crud
 from app.ai_service import ai_service
 from app.exporter import generate_excel_report, generate_pdf_report
+from app.database import init_db
 import os
 import io
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 # ===================== CORS =====================
 allowed_origins = [
