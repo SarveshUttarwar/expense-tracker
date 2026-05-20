@@ -103,7 +103,7 @@ export default function Expenses() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white font-['Outfit'] transition-colors duration-300">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Sidebar />
 
       <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 overflow-y-auto">

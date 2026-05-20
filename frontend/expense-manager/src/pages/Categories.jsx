@@ -74,7 +74,7 @@ export default function Categories() {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white font-['Outfit'] transition-colors duration-300">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Sidebar />
 
       <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 space-y-10 overflow-y-auto">
@@ -173,12 +173,12 @@ export default function Categories() {
                 <BarChart data={combinedData}>
                   <XAxis
                     dataKey="category"
-                    tick={{ fill: theme === 'dark' ? "#a1a1aa" : "#64748b", fontSize: 12, fontFamily: 'Outfit' }}
+                    tick={{ fill: theme === 'dark' ? "#a1a1aa" : "#64748b", fontSize: 12, fontFamily: 'Calibri' }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: theme === 'dark' ? "#a1a1aa" : "#64748b", fontSize: 12, fontFamily: 'Outfit' }}
+                    tick={{ fill: theme === 'dark' ? "#a1a1aa" : "#64748b", fontSize: 12, fontFamily: 'Calibri' }}
                     axisLine={false}
                     tickLine={false}
                   />

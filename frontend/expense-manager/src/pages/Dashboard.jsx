@@ -151,7 +151,7 @@ export default function Dashboard() {
     responsive: true,
     plugins: {
       legend: {
-        labels: { color: theme === "dark" ? "#e5e7eb" : "#475569", font: { family: 'Outfit' } },
+        labels: { color: theme === "dark" ? "#e5e7eb" : "#475569", font: { family: 'Calibri' } },
       },
       tooltip: {
         backgroundColor: theme === "dark" ? "#18181b" : "#ffffff",
@@ -165,18 +165,18 @@ export default function Dashboard() {
     },
     scales: {
       x: {
-        ticks: { color: theme === "dark" ? "#a1a1aa" : "#64748b", font: { family: 'Outfit' } },
+        ticks: { color: theme === "dark" ? "#a1a1aa" : "#64748b", font: { family: 'Calibri' } },
         grid: { display: false },
       },
       y: {
-        ticks: { color: theme === "dark" ? "#a1a1aa" : "#64748b", font: { family: 'Outfit' } },
+        ticks: { color: theme === "dark" ? "#a1a1aa" : "#64748b", font: { family: 'Calibri' } },
         grid: { color: theme === "dark" ? "#27272a" : "#f1f5f9" },
       },
     },
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white font-['Outfit'] transition-colors duration-300">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Sidebar />
 
       <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 overflow-y-auto">
@@ -308,18 +308,16 @@ export default function Dashboard() {
 
 function KPI({ label, value, color = "text-slate-900 dark:text-white", trend = null }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-sm hover:shadow-md dark:shadow-none transition-all group">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/10 dark:to-purple-500/10 rounded-full blur-xl -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-500"></div>
+    <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-5 shadow-sm transition-all hover:border-slate-300 dark:hover:border-zinc-700">
+      <p className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{label}</p>
       
-      <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 relative z-10">{label}</p>
-      
-      <div className="mt-3 flex items-end justify-between relative z-10">
-        <p className={`text-3xl font-bold tracking-tight ${color}`}>
+      <div className="mt-4 flex items-end justify-between">
+        <p className={`text-2xl font-bold tracking-tight ${color}`}>
           {value}
         </p>
         
         {trend && (
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${trend === 'up' && color.includes('rose') ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : trend === 'up' && color.includes('emerald') ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500' : trend === 'down' && color.includes('rose') ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
+          <div className={`flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${trend === 'up' && color.includes('rose') ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : trend === 'up' && color.includes('emerald') ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500' : trend === 'down' && color.includes('rose') ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'}`}>
             {trend === 'up' ? '↗' : '↘'}
           </div>
         )}
