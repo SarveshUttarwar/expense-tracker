@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, signupUser } from "../services/api";
+import { loginUser, signupUser, resetPassword } from "../services/api";
 
 export default function Login() {
   const navigate = useNavigate();
 
   const [isSignup, setIsSignup] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +20,15 @@ export default function Login() {
     setLoading(true);
 
     try {
-      if (isSignup) {
+      if (isForgotPassword) {
+        // Reset password
+        await resetPassword(username, password);
+        setSuccess("Password reset successfully! You can now log in.");
+        setTimeout(() => {
+          setIsForgotPassword(false);
+          setPassword("");
+        }, 1500);
+      } else if (isSignup) {
         // Register new user
         const newUser = await signupUser(username, password);
         // Automatically login the new user
@@ -42,23 +51,29 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 transition-colors duration-300">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 transition-colors duration-300 px-4 py-8">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[30%] -right-[10%] w-[70%] h-[70%] rounded-full bg-indigo-100/50 dark:bg-indigo-900/20 blur-3xl opacity-50"></div>
         <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-100/50 dark:bg-purple-900/20 blur-3xl opacity-50"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="rounded-3xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl backdrop-blur-xl">
+        <div className="rounded-3xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 p-6 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl backdrop-blur-xl">
           <div className="mb-8 text-center">
             <div className="mx-auto w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30 mb-4">
               <span className="text-white font-bold text-2xl leading-none">E</span>
             </div>
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
-              {isSignup ? "Create Account" : "Welcome Back"}
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
+              {isForgotPassword
+                ? "Reset Password"
+                : isSignup
+                ? "Create Account"
+                : "Welcome Back"}
             </h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">
-              {isSignup
+              {isForgotPassword
+                ? "Enter your details to create a new password"
+                : isSignup
                 ? "Sign up to track and manage your goals"
                 : "Sign in to manage your finances seamlessly"}
             </p>
@@ -92,15 +107,30 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-400 mb-1.5 uppercase tracking-wide">
-                Password
-              </label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-400 uppercase tracking-wide">
+                  {isForgotPassword ? "New Password" : "Password"}
+                </label>
+                {!isSignup && !isForgotPassword && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      setError("");
+                      setSuccess("");
+                    }}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl bg-white dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/20 transition-all outline-none"
-                placeholder="Enter your password"
+                placeholder={isForgotPassword ? "Enter your new password" : "Enter your password"}
                 required
               />
             </div>
@@ -111,9 +141,13 @@ export default function Login() {
               className="mt-2 w-full rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/40 focus:ring-4 focus:ring-indigo-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading
-                ? isSignup
+                ? isForgotPassword
+                  ? "Resetting Password..."
+                  : isSignup
                   ? "Creating Account..."
                   : "Signing in..."
+                : isForgotPassword
+                ? "Reset Password"
                 : isSignup
                 ? "Sign Up"
                 : "Sign In"}
@@ -121,19 +155,33 @@ export default function Login() {
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignup(!isSignup);
-                setError("");
-                setSuccess("");
-              }}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-            >
-              {isSignup
-                ? "Already have an account? Sign In"
-                : "Don't have an account? Sign Up"}
-            </button>
+            {isForgotPassword ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setError("");
+                  setSuccess("");
+                }}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+              >
+                Back to Sign In
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setError("");
+                  setSuccess("");
+                }}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+              >
+                {isSignup
+                  ? "Already have an account? Sign In"
+                  : "Don't have an account? Sign Up"}
+              </button>
+            )}
           </div>
 
           <p className="mt-8 text-center text-xs font-medium text-slate-400 dark:text-zinc-500">

@@ -77,7 +77,7 @@ export default function Categories() {
     <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white font-['Outfit'] transition-colors duration-300">
       <Sidebar />
 
-      <main className="flex-1 p-8 lg:p-10 space-y-10 overflow-y-auto">
+      <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 space-y-10 overflow-y-auto">
         {/* HEADER */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Category Analytics</h1>

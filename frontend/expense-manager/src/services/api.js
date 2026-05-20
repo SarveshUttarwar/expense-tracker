@@ -23,6 +23,19 @@ export async function signupUser(username, password) {
   return res.json();
 }
 
+export async function resetPassword(username, newPassword) {
+  const res = await fetch(`${BASE_URL}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password: newPassword }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to reset password");
+  }
+  return res.json();
+}
+
 export async function getExpenses(userId) {
   const res = await fetch(`${BASE_URL}/expenses?user_id=${userId}`);
   if (!res.ok) throw new Error("Failed to fetch expenses");

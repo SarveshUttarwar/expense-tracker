@@ -45,6 +45,29 @@ def create_user(username, password):
     return {"id": user_id, "username": username}
 
 
+def reset_password(username, new_password):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Check if user exists
+    cursor.execute("SELECT id FROM users WHERE username=%s", (username,))
+    user = cursor.fetchone()
+    if not user:
+        cursor.close()
+        db.close()
+        return False
+
+    # Update password
+    cursor.execute(
+        "UPDATE users SET password=%s WHERE username=%s",
+        (new_password, username),
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    return True
+
+
 # =====================================================
 # EXPENSES & SAVINGS
 # =====================================================

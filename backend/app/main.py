@@ -47,6 +47,14 @@ def signup(data: LoginRequest):
     return user
 
 
+@app.post("/reset-password")
+def reset_password(data: LoginRequest):
+    success = crud.reset_password(data.username, data.password)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Password reset successful"}
+
+
 @app.post("/expenses")
 def add_expense(expense: ExpenseCreate):
     crud.create_expense(expense)

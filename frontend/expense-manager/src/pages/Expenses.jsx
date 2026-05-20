@@ -106,7 +106,7 @@ export default function Expenses() {
     <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white font-['Outfit'] transition-colors duration-300">
       <Sidebar />
 
-      <main className="flex-1 p-8 lg:p-10 overflow-y-auto">
+      <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 overflow-y-auto">
         {/* HEADER */}
         <div className="mb-8 flex items-center justify-between">
           <div>
