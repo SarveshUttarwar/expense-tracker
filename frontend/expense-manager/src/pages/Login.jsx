@@ -1,24 +1,39 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../services/api";
+import { loginUser, signupUser } from "../services/api";
 
 export default function Login() {
   const navigate = useNavigate();
 
+  const [isSignup, setIsSignup] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
-      const user = await loginUser(username, password);
-      localStorage.setItem("user", JSON.stringify(user));
-      navigate("/dashboard");
+      if (isSignup) {
+        // Register new user
+        const newUser = await signupUser(username, password);
+        // Automatically login the new user
+        localStorage.setItem("user", JSON.stringify(newUser));
+        setSuccess("Account created successfully! Logging in...");
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
+      } else {
+        // Login existing user
+        const user = await loginUser(username, password);
+        localStorage.setItem("user", JSON.stringify(user));
+        navigate("/dashboard");
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -40,16 +55,24 @@ export default function Login() {
               <span className="text-white font-bold text-2xl leading-none">E</span>
             </div>
             <h1 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
-              Welcome Back
+              {isSignup ? "Create Account" : "Welcome Back"}
             </h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">
-              Sign in to manage your finances seamlessly
+              {isSignup
+                ? "Sign up to track and manage your goals"
+                : "Sign in to manage your finances seamlessly"}
             </p>
           </div>
 
           {error && (
             <div className="mb-6 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
               <span className="font-bold">!</span> {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 px-4 py-3 text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+              <span className="font-bold">✓</span> {success}
             </div>
           )}
 
@@ -87,12 +110,34 @@ export default function Login() {
               disabled={loading}
               className="mt-2 w-full rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/40 focus:ring-4 focus:ring-indigo-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading
+                ? isSignup
+                  ? "Creating Account..."
+                  : "Signing in..."
+                : isSignup
+                ? "Sign Up"
+                : "Sign In"}
             </button>
           </form>
 
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignup(!isSignup);
+                setError("");
+                setSuccess("");
+              }}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+            >
+              {isSignup
+                ? "Already have an account? Sign In"
+                : "Don't have an account? Sign Up"}
+            </button>
+          </div>
+
           <p className="mt-8 text-center text-xs font-medium text-slate-400 dark:text-zinc-500">
-            Local desktop application · No cloud sync
+            Cloud database sync active
           </p>
         </div>
       </div>

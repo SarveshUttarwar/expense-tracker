@@ -20,6 +20,31 @@ def authenticate_user(username, password):
     return user
 
 
+def create_user(username, password):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Check if username already exists
+    cursor.execute("SELECT id FROM users WHERE username=%s", (username,))
+    existing = cursor.fetchone()
+    if existing:
+        cursor.close()
+        db.close()
+        return None
+
+    # Insert user
+    cursor.execute(
+        "INSERT INTO users (username, password) VALUES (%s, %s)",
+        (username, password),
+    )
+    db.commit()
+    user_id = cursor.lastrowid
+
+    cursor.close()
+    db.close()
+    return {"id": user_id, "username": username}
+
+
 # =====================================================
 # EXPENSES & SAVINGS
 # =====================================================

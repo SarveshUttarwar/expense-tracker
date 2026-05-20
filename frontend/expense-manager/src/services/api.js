@@ -10,6 +10,19 @@ export async function loginUser(username, password) {
   return res.json();
 }
 
+export async function signupUser(username, password) {
+  const res = await fetch(`${BASE_URL}/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to sign up");
+  }
+  return res.json();
+}
+
 export async function getExpenses(userId) {
   const res = await fetch(`${BASE_URL}/expenses?user_id=${userId}`);
   if (!res.ok) throw new Error("Failed to fetch expenses");

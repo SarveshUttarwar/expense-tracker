@@ -39,6 +39,14 @@ def login(data: LoginRequest):
     return user
 
 
+@app.post("/signup")
+def signup(data: LoginRequest):
+    user = crud.create_user(data.username, data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    return user
+
+
 @app.post("/expenses")
 def add_expense(expense: ExpenseCreate):
     crud.create_expense(expense)
