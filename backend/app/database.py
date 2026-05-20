@@ -105,6 +105,16 @@ def init_db():
         )
         """)
         
+        # Insert default user if not exists
+        cursor.execute("SELECT id FROM users WHERE username = %s", ("sarvesh18",))
+        user = cursor.fetchone()
+        if not user:
+            cursor.execute(
+                "INSERT INTO users (username, password) VALUES (%s, %s)",
+                ("sarvesh18", "Nikisumu@18")
+            )
+            logging.info("Default user sarvesh18 created.")
+        
         db.commit()
         cursor.close()
         db.close()
