@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 import logging
 
 pool = None
@@ -14,7 +14,7 @@ def get_db_config():
     db_config = {}
     database_url = os.getenv("DATABASE_URL")
     if database_url:
-        # Example Aiven URL: mysql://avnadmin:password@host:port/defaultdb
+        # Example Aiven URL: mysql://avnadmin:password@host:port/defaultdb?ssl-mode=REQUIRED
         url = urlparse(database_url)
         db_config = {
             "host": url.hostname,
@@ -23,6 +23,13 @@ def get_db_config():
             "database": url.path.lstrip("/"),
             "port": url.port or 3306
         }
+        # Parse query parameters (e.g., ssl-mode=REQUIRED)
+        if url.query:
+            query_params = parse_qs(url.query)
+            for k, v in query_params.items():
+                # mysql-connector-python expects ssl_mode (with underscore)
+                config_key = k.replace("-", "_")
+                db_config[config_key] = v[0]
     else:
         db_config = {
             "host": os.getenv("DB_HOST"),
