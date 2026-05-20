@@ -6,12 +6,17 @@ def seed_categories_for_user(user_id):
     cursor = None
     try:
         db = get_db()
+        db.start_transaction()
         cursor = db.cursor(dictionary=True)
         for name in DEFAULT_CATEGORIES:
             cursor.execute("SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s", (name, user_id))
             if not cursor.fetchone():
                 cursor.execute("INSERT INTO categories (name, user_id) VALUES (%s, %s)", (name, user_id))
         db.commit()
+    except Exception as e:
+        if db:
+            db.rollback()
+        raise e
     finally:
         if cursor:
             cursor.close()
@@ -46,6 +51,7 @@ def create_user(username, password):
     cursor = None
     try:
         db = get_db()
+        db.start_transaction()
         cursor = db.cursor(dictionary=True)
 
         # Check if username already exists
@@ -59,23 +65,21 @@ def create_user(username, password):
             "INSERT INTO users (username, password) VALUES (%s, %s)",
             (username, password),
         )
-        db.commit()
         user_id = cursor.lastrowid
 
-        # Seed default categories for the new user (same connection, no leak)
+        # Seed default categories for the new user (same transaction)
         for name in DEFAULT_CATEGORIES:
             cursor.execute(
-                "SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s",
+                "INSERT INTO categories (name, user_id) VALUES (%s, %s)",
                 (name, user_id),
             )
-            if not cursor.fetchone():
-                cursor.execute(
-                    "INSERT INTO categories (name, user_id) VALUES (%s, %s)",
-                    (name, user_id),
-                )
         db.commit()
 
         return {"id": user_id, "username": username}
+    except Exception as e:
+        if db:
+            db.rollback()
+        raise e
     finally:
         if cursor:
             cursor.close()
@@ -284,6 +288,24 @@ def upsert_goal(data):
             db.close()
 
 
+def delete_goal(goal_id, user_id):
+    db = None
+    cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            "DELETE FROM goals WHERE id = %s AND user_id = %s",
+            (goal_id, user_id),
+        )
+        db.commit()
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+
 def get_goals_summary(user_id, month, year):
     db = None
     cursor = None
@@ -291,35 +313,52 @@ def get_goals_summary(user_id, month, year):
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        # Robust join by matching lowercase category names rather than IDs
-        # This fixes any category ID mismatch issues between legacy/seeding data.
         cursor.execute(
             """
             SELECT
-                c_goal.name AS category,
-                g.monthly_goal AS goal,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN LOWER(c_expense.name) = LOWER(c_goal.name) THEN e.amount 
-                        ELSE 0 
-                    END
-                ), 0) AS spent
+                g.id,
+                g.user_id,
+                g.category_id,
+                c.name AS category_name,
+                g.monthly_goal,
+                COALESCE(SUM(e.amount), 0) AS spent
             FROM goals g
-            JOIN categories c_goal ON g.category_id = c_goal.id
+            JOIN categories c ON g.category_id = c.id
             LEFT JOIN expenses e
-              ON e.user_id = g.user_id
-             AND LOWER(e.type) = 'expense'
+              ON g.category_id = e.category_id
+             AND g.user_id = e.user_id
              AND MONTH(e.expense_date) = g.month
              AND YEAR(e.expense_date) = g.year
-            LEFT JOIN categories c_expense ON e.category_id = c_expense.id
+             AND LOWER(e.type) = 'expense'
             WHERE g.user_id = %s
               AND g.month = %s
               AND g.year = %s
-            GROUP BY g.id, c_goal.name, g.monthly_goal
+            GROUP BY g.id, g.user_id, g.category_id, c.name, g.monthly_goal
             """,
             (user_id, month, year),
         )
-        return cursor.fetchall()
+        data = cursor.fetchall()
+        
+        normalized_data = []
+        for r in data:
+            monthly_goal = float(r["monthly_goal"])
+            spent = float(r["spent"])
+            remaining = monthly_goal - spent
+            progress_percent = min((spent / monthly_goal) * 100, 100) if monthly_goal > 0 else 0
+            
+            normalized_data.append({
+                "id": r["id"],
+                "category_id": r["category_id"],
+                "category_name": r["category_name"],
+                "category": r["category_name"],  # Legacy compatibility
+                "monthly_goal": monthly_goal,
+                "goal": monthly_goal,            # Legacy compatibility
+                "spent": spent,
+                "remaining": remaining,
+                "progress_percent": progress_percent
+            })
+            
+        return normalized_data
     finally:
         if cursor:
             cursor.close()
@@ -345,7 +384,7 @@ def category_analytics(user_id, month, year):
             JOIN categories c ON e.category_id = c.id
             WHERE e.user_id = %s AND LOWER(e.type) = 'expense'
               AND MONTH(e.expense_date) = %s AND YEAR(e.expense_date) = %s
-            GROUP BY c.id
+            GROUP BY c.id, c.name
             ORDER BY total DESC
             """,
             (user_id, month, year),
@@ -401,7 +440,7 @@ def dashboard_summary(user_id, month, year):
                 (MONTH(e.expense_date) = %s AND YEAR(e.expense_date) = %s) OR
                 (MONTH(e.expense_date) = %s AND YEAR(e.expense_date) = %s)
             )
-            GROUP BY c.id
+            GROUP BY c.id, c.name
             HAVING current_total > 0 OR prev_total > 0
             """,
             (month, year, prev_month, prev_year, user_id, month, year, prev_month, prev_year),

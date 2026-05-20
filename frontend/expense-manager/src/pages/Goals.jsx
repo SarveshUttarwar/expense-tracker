@@ -6,6 +6,7 @@ import {
   saveGoal,
   createCategory,
   getCategories,
+  deleteGoal,
 } from "../services/api";
 
 export default function Goals() {
@@ -89,6 +90,23 @@ export default function Goals() {
     setGoalAmount("");
     setEditingCategory(null);
     loadGoals();
+  };
+
+  const handleDeleteGoal = async (goalId) => {
+    if (!confirm("Are you sure you want to delete this spending goal?")) return;
+    try {
+      await deleteGoal(goalId, userId);
+      loadGoals();
+    } catch (err) {
+      alert(err.message || "Failed to delete goal");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setCategoryId("");
+    setCustomCategory("");
+    setGoalAmount("");
+    setEditingCategory(null);
   };
 
   const handleEdit = (goal) => {
@@ -183,11 +201,19 @@ export default function Goals() {
                 className="w-full rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
-
-            <div className="flex items-end">
+            <div className="flex items-end gap-3">
               <button className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/40 transition-all">
                 {editingCategory ? "Update Goal" : "Save Goal"}
               </button>
+              {editingCategory && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="w-full rounded-xl bg-slate-200 dark:bg-zinc-800 py-3 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-300 dark:hover:bg-zinc-750 transition-all"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </form>
         </div>
@@ -227,13 +253,22 @@ export default function Goals() {
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleEdit(g)}
-                      className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors"
-                      title="Edit Goal"
-                    >
-                      ✏️
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleEdit(g)}
+                        className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors"
+                        title="Edit Goal"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGoal(g.id)}
+                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-55/10 rounded-lg transition-colors"
+                        title="Delete Goal"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mb-6 flex justify-between items-end">

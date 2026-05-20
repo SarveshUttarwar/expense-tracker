@@ -108,6 +108,11 @@ def delete_expense(expense_id: int, user_id: int = Query(...)):
     crud.delete_expense(expense_id, user_id)
     return {"message": "Transaction deleted"}
 
+@app.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, user_id: int = Query(...)):
+    crud.delete_goal(goal_id, user_id)
+    return {"message": "Goal deleted"}
+
 # ===================== AI ENDPOINTS =====================
 
 @app.post("/ai/parse")

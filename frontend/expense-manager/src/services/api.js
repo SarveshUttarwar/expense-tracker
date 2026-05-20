@@ -116,6 +116,14 @@ export const deleteExpense = async (expense_id, userId) => {
   if (!res.ok) throw new Error("Failed to delete expense");
 };
 
+export const deleteGoal = async (goal_id, userId) => {
+  const res = await fetch(
+    `${BASE_URL}/goals/${goal_id}?user_id=${userId}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) throw new Error("Failed to delete goal");
+};
+
 // ===================== AI SERVICES =====================
 
 export async function parseAIExpense(text) {

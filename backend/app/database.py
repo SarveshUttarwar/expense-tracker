@@ -47,32 +47,126 @@ def get_db():
     return pool.get_connection()
 
 
+def add_unique_constraint(cursor, table, constraint_name, definition):
+    cursor.execute("""
+        SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+        WHERE CONSTRAINT_SCHEMA = DATABASE() 
+          AND CONSTRAINT_NAME = %s
+    """, (constraint_name,))
+    exists = cursor.fetchone()[0]
+    if not exists:
+        try:
+            cursor.execute(f"ALTER TABLE {table} ADD CONSTRAINT {constraint_name} UNIQUE {definition}")
+            logging.info(f"Added unique constraint {constraint_name} to {table}")
+        except Exception as e:
+            logging.error(f"Error adding unique constraint {constraint_name}: {e}")
+
+
+def add_foreign_key(cursor, table, constraint_name, definition):
+    cursor.execute("""
+        SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+        WHERE CONSTRAINT_SCHEMA = DATABASE() 
+          AND CONSTRAINT_NAME = %s
+    """, (constraint_name,))
+    exists = cursor.fetchone()[0]
+    if not exists:
+        try:
+            cursor.execute(f"ALTER TABLE {table} ADD CONSTRAINT {constraint_name} FOREIGN KEY {definition}")
+            logging.info(f"Added foreign key {constraint_name} to {table}")
+        except Exception as e:
+            logging.error(f"Error adding foreign key {constraint_name}: {e}")
+
+
 def init_db():
     # Use a direct connection (NOT from pool) for startup init
     db = mysql.connector.connect(**get_db_config())
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
     try:
+        # Create core tables first (if they do not exist)
         cursor.execute("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL)")
         cursor.execute("CREATE TABLE IF NOT EXISTS categories (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, user_id INT, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)")
         cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, category_id INT, amount DECIMAL(10,2) NOT NULL, description TEXT, expense_date DATE NOT NULL, type VARCHAR(50) NOT NULL, is_recurring BOOLEAN DEFAULT FALSE, recurrence_interval VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL)")
-        cursor.execute("CREATE TABLE IF NOT EXISTS goals (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, category_id INT NOT NULL, monthly_goal DECIMAL(10,2) NOT NULL, month INT NOT NULL, year INT NOT NULL, UNIQUE KEY uq_goal (user_id, category_id, month, year), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS goals (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, category_id INT NOT NULL, monthly_goal DECIMAL(10,2) NOT NULL, month INT NOT NULL, year INT NOT NULL, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE)")
+        db.commit()
 
-        # Ensure default user exists
+        # =====================================================
+        # DATA DEDUPLICATION & MIGRATION BEFORE ADDING CONSTRAINTS
+        # =====================================================
+
+        # 1. Deduplicate Categories (keep first inserted, update referencing rows)
+        cursor.execute("""
+            SELECT user_id, LOWER(name) as name_lower, MIN(id) as keep_id
+            FROM categories
+            GROUP BY user_id, LOWER(name)
+            HAVING COUNT(*) > 1
+        """)
+        dup_cats = cursor.fetchall()
+        for group in dup_cats:
+            user_id = group['user_id']
+            name_lower = group['name_lower']
+            keep_id = group['keep_id']
+
+            cursor.execute("""
+                SELECT id FROM categories 
+                WHERE user_id = %s AND LOWER(name) = %s AND id != %s
+            """, (user_id, name_lower, keep_id))
+            to_delete = [r['id'] for r in cursor.fetchall()]
+
+            if to_delete:
+                format_strings = ','.join(['%s'] * len(to_delete))
+                # Point referencing expenses to keep_id
+                cursor.execute(f"UPDATE expenses SET category_id = %s WHERE category_id IN ({format_strings})", [keep_id] + to_delete)
+                # Point referencing goals to keep_id
+                cursor.execute(f"UPDATE goals SET category_id = %s WHERE category_id IN ({format_strings})", [keep_id] + to_delete)
+                # Delete duplicate categories
+                cursor.execute(f"DELETE FROM categories WHERE id IN ({format_strings})", to_delete)
+        db.commit()
+
+        # 2. Deduplicate Goals (keep latest goal/id for same user/category/month/year)
+        cursor.execute("""
+            SELECT user_id, category_id, month, year, MAX(id) as keep_id
+            FROM goals
+            GROUP BY user_id, category_id, month, year
+            HAVING COUNT(*) > 1
+        """)
+        dup_goals = cursor.fetchall()
+        for goal in dup_goals:
+            user_id = goal['user_id']
+            category_id = goal['category_id']
+            month = goal['month']
+            year = goal['year']
+            keep_id = goal['keep_id']
+
+            cursor.execute("""
+                DELETE FROM goals 
+                WHERE user_id = %s AND category_id = %s AND month = %s AND year = %s AND id != %s
+            """, (user_id, category_id, month, year, keep_id))
+        db.commit()
+
+        # =====================================================
+        # ADD UNIQUE CONSTRAINTS AND FOREIGN KEYS
+        # =====================================================
+        
+        # Switch back to non-dictionary tuple fetch for helper functions
+        cursor.close()
+        cursor = db.cursor()
+
+        # Unique Constraints
+        add_unique_constraint(cursor, "categories", "unique_user_category", "(user_id, name)")
+        add_unique_constraint(cursor, "goals", "unique_goal_per_period", "(user_id, category_id, month, year)")
+
+        # Foreign Key Constraints
+        add_foreign_key(cursor, "expenses", "fk_expense_category", "(category_id) REFERENCES categories(id) ON DELETE SET NULL")
+        add_foreign_key(cursor, "goals", "fk_goal_category", "(category_id) REFERENCES categories(id) ON DELETE CASCADE")
+        db.commit()
+
+        # Ensure default user exists (without seeding categories here)
         cursor.execute("SELECT id FROM users WHERE username='sarvesh18'")
         row = cursor.fetchone()
         if not row:
             cursor.execute("INSERT INTO users (username, password) VALUES ('sarvesh18', 'Nikisumu@18')")
             db.commit()
-            cursor.execute("SELECT id FROM users WHERE username='sarvesh18'")
-            row = cursor.fetchone()
 
-        # Seed default categories for default user
-        uid = row[0]
-        for name in DEFAULT_CATEGORIES:
-            cursor.execute("SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s", (name, uid))
-            if not cursor.fetchone():
-                cursor.execute("INSERT INTO categories (name, user_id) VALUES (%s, %s)", (name, uid))
-        db.commit()
         logging.info("DB init complete.")
     except Exception as e:
         logging.error(f"DB init error: {e}")
