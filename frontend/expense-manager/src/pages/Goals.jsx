@@ -5,6 +5,7 @@ import {
   getGoalsSummary,
   saveGoal,
   createCategory,
+  getCategories,
 } from "../services/api";
 
 export default function Goals() {
@@ -27,14 +28,8 @@ export default function Goals() {
   const [goalAmount, setGoalAmount] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
 
-  /* TEMP categories (replace later with backend fetch) */
-  const categories = [
-    { id: 1, name: "Food" },
-    { id: 2, name: "Transport" },
-    { id: 3, name: "Shopping" },
-    { id: 4, name: "Rent" },
-    { id: 5, name: "Entertainment" },
-  ];
+  /* Real categories fetched from the backend */
+  const [categories, setCategories] = useState([]);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -46,8 +41,18 @@ export default function Goals() {
       navigate("/");
       return;
     }
+    loadCategories();
     loadGoals();
   }, [userId, navigate, month, year]);
+
+  const loadCategories = async () => {
+    try {
+      const data = await getCategories(userId);
+      setCategories(data);
+    } catch (_) {
+      // silently fail — form still works with custom category
+    }
+  };
 
   const loadGoals = async () => {
     setLoading(true);
@@ -67,6 +72,8 @@ export default function Goals() {
     if (customCategory.trim()) {
       const newCat = await createCategory(userId, customCategory);
       finalCategoryId = newCat.id;
+      // Reload categories so the new one shows in dropdown
+      loadCategories();
     }
 
     await saveGoal({
@@ -85,8 +92,11 @@ export default function Goals() {
   };
 
   const handleEdit = (goal) => {
-    const cat = categories.find((c) => c.name === goal.category);
-    if (cat) setCategoryId(cat.id);
+    // Find the real category ID from the fetched categories list
+    const cat = categories.find(
+      (c) => c.name.toLowerCase() === goal.category.toLowerCase()
+    );
+    if (cat) setCategoryId(String(cat.id));
     setGoalAmount(goal.goal);
     setEditingCategory(goal.category);
   };
