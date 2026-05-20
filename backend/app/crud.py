@@ -42,7 +42,35 @@ def create_user(username, password):
 
     cursor.close()
     db.close()
+
+    # Seed default categories for the new user
+    seed_default_categories(user_id)
+
     return {"id": user_id, "username": username}
+
+
+DEFAULT_CATEGORIES = [
+    "Food", "Transport", "Shopping", "Rent",
+    "Entertainment", "Health", "Utilities", "Education"
+]
+
+def seed_default_categories(user_id):
+    """Insert default categories for a new user if they don't already exist."""
+    db = get_db()
+    cursor = db.cursor()
+    for name in DEFAULT_CATEGORIES:
+        cursor.execute(
+            "SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s",
+            (name, user_id),
+        )
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO categories (name, user_id) VALUES (%s, %s)",
+                (name, user_id),
+            )
+    db.commit()
+    cursor.close()
+    db.close()
 
 
 def reset_password(username, new_password):

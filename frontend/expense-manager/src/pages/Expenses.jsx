@@ -5,6 +5,7 @@ import {
   getExpenses,
   addExpense,
   createCategory,
+  getCategories,
   deleteExpense,
 } from "../services/api";
 
@@ -15,6 +16,9 @@ export default function Expenses() {
 
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
+
+  // Real categories loaded from backend (not hardcoded!)
+  const [categories, setCategories] = useState([]);
 
   const [form, setForm] = useState({
     amount: "",
@@ -27,21 +31,23 @@ export default function Expenses() {
     recurrence_interval: "",
   });
 
-  const categories = [
-    { id: 1, name: "Food" },
-    { id: 2, name: "Transport" },
-    { id: 3, name: "Shopping" },
-    { id: 4, name: "Rent" },
-    { id: 5, name: "Entertainment" },
-  ];
-
   useEffect(() => {
     if (!userId) {
       navigate("/");
       return;
     }
     loadTransactions();
+    loadCategories();
   }, [userId, navigate]);
+
+  const loadCategories = async () => {
+    try {
+      const data = await getCategories(userId);
+      setCategories(data);
+    } catch (_) {
+      // silently fail — custom category input still works
+    }
+  };
 
   const loadTransactions = async () => {
     const data = await getExpenses(userId);
@@ -60,14 +66,14 @@ export default function Expenses() {
     let finalCategoryId = null;
 
     if (form.type === "expense") {
-      finalCategoryId = form.category_id;
-
       if (form.custom_category.trim()) {
-        const newCategory = await createCategory(
-          userId,
-          form.custom_category
-        );
+        // Create or fetch existing category by name
+        const newCategory = await createCategory(userId, form.custom_category);
         finalCategoryId = newCategory.id;
+        // Refresh categories list so new category appears in dropdown
+        loadCategories();
+      } else {
+        finalCategoryId = form.category_id;
       }
 
       if (!finalCategoryId) {

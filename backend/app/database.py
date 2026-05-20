@@ -119,5 +119,15 @@ def init_db():
         cursor.close()
         db.close()
         logging.info("Database tables initialized successfully.")
+
+        # Seed default categories for the default user
+        cursor2 = get_db().cursor(dictionary=True)
+        cursor2.execute("SELECT id FROM users WHERE username = %s", ("sarvesh18",))
+        default_user = cursor2.fetchone()
+        cursor2.close()
+        if default_user:
+            from app.crud import seed_default_categories
+            seed_default_categories(default_user["id"])
+
     except Exception as e:
         logging.error(f"Error initializing database: {e}")
