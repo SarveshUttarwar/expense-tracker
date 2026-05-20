@@ -1,0 +1,27 @@
+--- USER 3 CATEGORIES ---
+{'id': 6, 'name': 'Books', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 15, 15, 41)}
+{'id': 7, 'name': 'Debt', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 15, 36, 31)}
+{'id': 8, 'name': 'Savings', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 15, 56, 2)}
+{'id': 9, 'name': 'Sunfast', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 16, 28, 28)}
+{'id': 10, 'name': 'Food', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 15, 36, 53)}
+{'id': 11, 'name': 'Rent', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 15, 37, 44)}
+{'id': 12, 'name': 'Shopping', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 15, 39, 53)}
+{'id': 13, 'name': 'Entertainment', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 16, 16, 51)}
+
+--- USER 3 GOALS ---
+{'id': 6, 'user_id': 3, 'category_id': 10, 'monthly_goal': Decimal('10000.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 15, 8, 16), 'name': 'Food'}
+{'id': 7, 'user_id': 3, 'category_id': 6, 'monthly_goal': Decimal('2000.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 15, 15, 41), 'name': 'Books'}
+{'id': 8, 'user_id': 3, 'category_id': 13, 'monthly_goal': Decimal('10000.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 15, 16, 35), 'name': 'Entertainment'}
+{'id': 10, 'user_id': 3, 'category_id': 11, 'monthly_goal': Decimal('10017.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 15, 34, 46), 'name': 'Rent'}
+{'id': 11, 'user_id': 3, 'category_id': 7, 'monthly_goal': Decimal('12000.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 15, 36, 46), 'name': 'Debt'}
+{'id': 12, 'user_id': 3, 'category_id': 8, 'monthly_goal': Decimal('20000.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 15, 56, 57), 'name': 'Savings'}
+{'id': 13, 'user_id': 3, 'category_id': 12, 'monthly_goal': Decimal('40000.00'), 'month': 12, 'year': 2025, 'created_at': datetime.datetime(2025, 12, 29, 17, 4, 52), 'name': 'Shopping'}
+{'id': 14, 'user_id': 3, 'category_id': 10, 'monthly_goal': Decimal('8000.00'), 'month': 4, 'year': 2026, 'created_at': datetime.datetime(2026, 4, 10, 14, 45, 34), 'name': 'Food'}
+{'id': 16, 'user_id': 3, 'category_id': 8, 'monthly_goal': Decimal('25000.00'), 'month': 4, 'year': 2026, 'created_at': datetime.datetime(2026, 4, 10, 15, 42, 37), 'name': 'Savings'}
+
+--- USER 3 EXPENSES (APRIL 2026) ---
+{'id': 29, 'user_id': 3, 'category_id': 10, 'amount': Decimal('500.00'), 'description': 'dinner', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 36, 53), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'name': 'Food'}
+{'id': 30, 'user_id': 3, 'category_id': 11, 'amount': Decimal('10000.00'), 'description': 'spent on rent', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 37, 44), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'name': 'Rent'}
+{'id': 31, 'user_id': 3, 'category_id': 10, 'amount': Decimal('200.00'), 'description': 'lunch', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 39, 28), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'name': 'Food'}
+{'id': 32, 'user_id': 3, 'category_id': 12, 'amount': Decimal('2000.00'), 'description': 'spent on shopping', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 39, 53), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'name': 'Shopping'}
+{'id': 35, 'user_id': 3, 'category_id': 10, 'amount': Decimal('500.00'), 'description': 'lunch', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 16, 12, 32), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'name': 'Food'}

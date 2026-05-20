@@ -1,0 +1,9 @@
+--- DATA FOR USER 3, 4/2026 ---
+Expenses Summary:
+{'type': 'expense', 'category_id': 10, 'count': 2, 'total': Decimal('700.00')}
+{'type': 'expense', 'category_id': 11, 'count': 1, 'total': Decimal('10000.00')}
+{'type': 'expense', 'category_id': 12, 'count': 1, 'total': Decimal('2000.00')}
+
+Goals in DB:
+{'id': 14, 'user_id': 3, 'category_id': 1, 'monthly_goal': Decimal('8000.00'), 'month': 4, 'year': 2026, 'created_at': datetime.datetime(2026, 4, 10, 14, 45, 34), 'category_name': 'Food'}
+{'id': 16, 'user_id': 3, 'category_id': 8, 'monthly_goal': Decimal('25000.00'), 'month': 4, 'year': 2026, 'created_at': datetime.datetime(2026, 4, 10, 15, 42, 37), 'category_name': 'Savings'}

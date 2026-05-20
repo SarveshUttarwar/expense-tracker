@@ -1,0 +1,18 @@
+--- CATEGORIES ---
+{'id': 6, 'name': 'books', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 15, 15, 41)}
+{'id': 7, 'name': 'Debt', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 15, 36, 31)}
+{'id': 8, 'name': 'Savings', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 15, 56, 2)}
+{'id': 9, 'name': 'sunfast', 'user_id': 3, 'created_at': datetime.datetime(2025, 12, 29, 16, 28, 28)}
+{'id': 10, 'name': 'food', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 15, 36, 53)}
+{'id': 11, 'name': 'rent', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 15, 37, 44)}
+{'id': 12, 'name': 'shopping', 'user_id': 3, 'created_at': datetime.datetime(2026, 4, 10, 15, 39, 53)}
+
+--- GOALS (April 2026) ---
+{'id': 14, 'user_id': 3, 'category_id': 1, 'monthly_goal': Decimal('8000.00'), 'month': 4, 'year': 2026, 'created_at': datetime.datetime(2026, 4, 10, 14, 45, 34), 'category_name': 'Food'}
+{'id': 16, 'user_id': 3, 'category_id': 8, 'monthly_goal': Decimal('25000.00'), 'month': 4, 'year': 2026, 'created_at': datetime.datetime(2026, 4, 10, 15, 42, 37), 'category_name': 'Savings'}
+
+--- EXPENSES (April 2026) ---
+{'id': 29, 'user_id': 3, 'category_id': 10, 'amount': Decimal('500.00'), 'description': 'dinner', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 36, 53), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'category_name': 'food'}
+{'id': 30, 'user_id': 3, 'category_id': 11, 'amount': Decimal('10000.00'), 'description': 'spent on rent', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 37, 44), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'category_name': 'rent'}
+{'id': 31, 'user_id': 3, 'category_id': 10, 'amount': Decimal('200.00'), 'description': 'lunch', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 39, 28), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'category_name': 'food'}
+{'id': 32, 'user_id': 3, 'category_id': 12, 'amount': Decimal('2000.00'), 'description': 'spent on shopping', 'expense_date': datetime.date(2026, 4, 10), 'created_at': datetime.datetime(2026, 4, 10, 15, 39, 53), 'type': 'expense', 'is_recurring': 0, 'recurrence_interval': None, 'category_name': 'shopping'}
