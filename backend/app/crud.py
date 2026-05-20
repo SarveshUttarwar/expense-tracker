@@ -1,4 +1,4 @@
-from app.database import get_db
+from app.database import get_db, DEFAULT_CATEGORIES
 
 
 # =====================================================
@@ -8,12 +8,10 @@ from app.database import get_db
 def authenticate_user(username, password):
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute(
         "SELECT id, username FROM users WHERE username=%s AND password=%s",
         (username, password),
     )
-
     user = cursor.fetchone()
     cursor.close()
     db.close()
@@ -40,24 +38,7 @@ def create_user(username, password):
     db.commit()
     user_id = cursor.lastrowid
 
-    cursor.close()
-    db.close()
-
-    # Seed default categories for the new user
-    seed_default_categories(user_id)
-
-    return {"id": user_id, "username": username}
-
-
-DEFAULT_CATEGORIES = [
-    "Food", "Transport", "Shopping", "Rent",
-    "Entertainment", "Health", "Utilities", "Education"
-]
-
-def seed_default_categories(user_id):
-    """Insert default categories for a new user if they don't already exist."""
-    db = get_db()
-    cursor = db.cursor()
+    # Seed default categories for the new user (same connection, no leak)
     for name in DEFAULT_CATEGORIES:
         cursor.execute(
             "SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s",
@@ -69,15 +50,16 @@ def seed_default_categories(user_id):
                 (name, user_id),
             )
     db.commit()
+
     cursor.close()
     db.close()
+    return {"id": user_id, "username": username}
 
 
 def reset_password(username, new_password):
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    # Check if user exists
     cursor.execute("SELECT id FROM users WHERE username=%s", (username,))
     user = cursor.fetchone()
     if not user:
@@ -85,7 +67,6 @@ def reset_password(username, new_password):
         db.close()
         return False
 
-    # Update password
     cursor.execute(
         "UPDATE users SET password=%s WHERE username=%s",
         (new_password, username),
@@ -116,9 +97,9 @@ def create_expense(expense):
             expense.amount,
             expense.description,
             expense.expense_date,
-            expense.type,           # expense | saving
-            expense.is_recurring,   # boolean
-            expense.recurrence_interval # monthly | weekly | yearly
+            expense.type,
+            expense.is_recurring,
+            expense.recurrence_interval,
         ),
     )
 
@@ -162,9 +143,8 @@ def create_category_if_not_exists(user_id, name):
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    # Normalize name
     name = name.strip()
-    
+
     cursor.execute(
         "SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s",
         (name, user_id),
@@ -176,9 +156,8 @@ def create_category_if_not_exists(user_id, name):
         db.close()
         return category["id"]
 
-    # Save as capitalized for consistent UI
     display_name = name.capitalize()
-    
+
     cursor.execute(
         "INSERT INTO categories (name, user_id) VALUES (%s, %s)",
         (display_name, user_id),
@@ -221,7 +200,7 @@ def delete_category(category_id, user_id):
 
 
 # =====================================================
-# GOALS (EXPENSES ONLY — SAVINGS EXCLUDED)
+# GOALS
 # =====================================================
 
 def upsert_goal(data):
@@ -264,12 +243,13 @@ def get_goals_summary(user_id, month, year):
         LEFT JOIN expenses e
           ON e.category_id = g.category_id
          AND e.user_id = g.user_id
+         AND e.type = 'expense'
          AND MONTH(e.expense_date) = g.month
          AND YEAR(e.expense_date) = g.year
         WHERE g.user_id = %s
           AND g.month = %s
           AND g.year = %s
-        GROUP BY g.id
+        GROUP BY g.id, c.name, g.monthly_goal
         """,
         (user_id, month, year),
     )
@@ -281,18 +261,13 @@ def get_goals_summary(user_id, month, year):
 
 
 # =====================================================
-# CATEGORY ANALYTICS (EXPENSES + SAVINGS BUCKET)
+# CATEGORY ANALYTICS
 # =====================================================
 
 def category_analytics(user_id, month, year):
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    # Combined query for expenses by category and total savings
-    # Note: Using a separate query for savings is actually cleaner here 
-    # since categories returns multiple rows and savings is a single value.
-    
-    # Expenses by category
     cursor.execute(
         """
         SELECT c.name AS category, SUM(e.amount) AS total
@@ -307,7 +282,6 @@ def category_analytics(user_id, month, year):
     )
     categories = cursor.fetchall()
 
-    # Savings as single bucket
     cursor.execute(
         """
         SELECT COALESCE(SUM(amount),0) AS total
@@ -329,7 +303,7 @@ def category_analytics(user_id, month, year):
 
 
 # =====================================================
-# DASHBOARD SUMMARY (EXPENSES ONLY)
+# DASHBOARD SUMMARY
 # =====================================================
 
 def dashboard_summary(user_id, month, year):
@@ -339,11 +313,10 @@ def dashboard_summary(user_id, month, year):
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
 
-    # Combined query for Current vs Previous expenses by category
     cursor.execute(
         """
-        SELECT 
-            c.name AS category, 
+        SELECT
+            c.name AS category,
             SUM(CASE WHEN MONTH(e.expense_date) = %s AND YEAR(e.expense_date) = %s THEN e.amount ELSE 0 END) AS current_total,
             SUM(CASE WHEN MONTH(e.expense_date) = %s AND YEAR(e.expense_date) = %s THEN e.amount ELSE 0 END) AS prev_total
         FROM expenses e
@@ -363,10 +336,9 @@ def dashboard_summary(user_id, month, year):
     current = [{"category": r["category"], "total": r["current_total"]} for r in combined_expenses if r["current_total"] > 0]
     previous = [{"category": r["category"], "total": r["prev_total"]} for r in combined_expenses if r["prev_total"] > 0]
 
-    # Combined query for savings
     cursor.execute(
         """
-        SELECT 
+        SELECT
             SUM(CASE WHEN MONTH(expense_date) = %s AND YEAR(expense_date) = %s THEN amount ELSE 0 END) AS savings_current,
             SUM(CASE WHEN MONTH(expense_date) = %s AND YEAR(expense_date) = %s THEN amount ELSE 0 END) AS savings_previous
         FROM expenses
@@ -386,15 +358,13 @@ def dashboard_summary(user_id, month, year):
         "savings_previous": savings_data["savings_previous"] or 0,
     }
 
+
 def delete_expense(expense_id, user_id):
     db = get_db()
     cursor = db.cursor()
 
     cursor.execute(
-        """
-        DELETE FROM expenses
-        WHERE id = %s AND user_id = %s
-        """,
+        "DELETE FROM expenses WHERE id = %s AND user_id = %s",
         (expense_id, user_id),
     )
 
@@ -404,15 +374,12 @@ def delete_expense(expense_id, user_id):
 
 
 def search_expenses(user_id, query):
-    """
-    Simple keyword search for now, to be enhanced by AI service filter.
-    """
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
     cursor.execute(
         """
-        SELECT 
+        SELECT
             e.id, e.expense_date, e.type, e.amount, e.description, c.name as category
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
@@ -427,13 +394,14 @@ def search_expenses(user_id, query):
     db.close()
     return data
 
+
 def get_all_expenses_for_export(user_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
     cursor.execute(
         """
-        SELECT 
+        SELECT
             e.expense_date as Date,
             e.type as Type,
             c.name as Category,

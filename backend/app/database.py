@@ -5,16 +5,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 import logging
 
 pool = None
+
+DEFAULT_CATEGORIES = [
+    "Food", "Transport", "Shopping", "Rent",
+    "Entertainment", "Health", "Utilities", "Education"
+]
 
 def get_db_config():
     db_config = {}
     database_url = os.getenv("DATABASE_URL")
     if database_url:
-        # Example Aiven URL: mysql://avnadmin:password@host:port/defaultdb
         url = urlparse(database_url)
         db_config = {
             "host": url.hostname,
@@ -50,11 +54,13 @@ def get_db():
     return pool.get_connection()
 
 def init_db():
+    db = None
+    cursor = None
     try:
         db = get_db()
-        cursor = db.cursor()
-        
-        # Create users
+        cursor = db.cursor(dictionary=True)
+
+        # ── Schema ────────────────────────────────────────────────
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -62,8 +68,7 @@ def init_db():
             password VARCHAR(255) NOT NULL
         )
         """)
-        
-        # Create categories
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS categories (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,8 +77,7 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
         """)
-        
-        # Create expenses
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS expenses (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -89,8 +93,7 @@ def init_db():
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
         )
         """)
-        
-        # Create goals
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS goals (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -104,30 +107,43 @@ def init_db():
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
         )
         """)
-        
-        # Insert default user if not exists
+
+        # ── Default user ─────────────────────────────────────────
         cursor.execute("SELECT id FROM users WHERE username = %s", ("sarvesh18",))
-        user = cursor.fetchone()
-        if not user:
+        user_row = cursor.fetchone()
+        if not user_row:
             cursor.execute(
                 "INSERT INTO users (username, password) VALUES (%s, %s)",
                 ("sarvesh18", "Nikisumu@18")
             )
+            db.commit()
+            # Re-fetch to get the newly inserted id
+            cursor.execute("SELECT id FROM users WHERE username = %s", ("sarvesh18",))
+            user_row = cursor.fetchone()
             logging.info("Default user sarvesh18 created.")
-        
-        db.commit()
-        cursor.close()
-        db.close()
-        logging.info("Database tables initialized successfully.")
 
-        # Seed default categories for the default user
-        cursor2 = get_db().cursor(dictionary=True)
-        cursor2.execute("SELECT id FROM users WHERE username = %s", ("sarvesh18",))
-        default_user = cursor2.fetchone()
-        cursor2.close()
-        if default_user:
-            from app.crud import seed_default_categories
-            seed_default_categories(default_user["id"])
+        # ── Seed default categories (same connection, no second cursor) ──
+        if user_row:
+            user_id = user_row["id"]
+            for name in DEFAULT_CATEGORIES:
+                cursor.execute(
+                    "SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s",
+                    (name, user_id),
+                )
+                if not cursor.fetchone():
+                    cursor.execute(
+                        "INSERT INTO categories (name, user_id) VALUES (%s, %s)",
+                        (name, user_id),
+                    )
+
+        db.commit()
+        logging.info("Database initialized successfully.")
 
     except Exception as e:
         logging.error(f"Error initializing database: {e}")
+    finally:
+        # Always clean up — even if an exception occurred
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
