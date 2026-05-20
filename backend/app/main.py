@@ -5,18 +5,25 @@ from app.schemas import GoalCreate, LoginRequest, ExpenseCreate, SearchQuery
 from app import crud
 from app.ai_service import ai_service
 from app.exporter import generate_excel_report, generate_pdf_report
+import os
 import io
 
 app = FastAPI()
 
 # ===================== CORS =====================
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ===================== HEALTH CHECK =====================
+@app.get("/")
+def health_check():
+    return {"status": "ok", "message": "Expense Tracker API is running"}
 
 # ===================== ROUTES =====================
 
