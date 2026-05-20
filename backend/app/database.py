@@ -14,22 +14,16 @@ def get_db_config():
     db_config = {}
     database_url = os.getenv("DATABASE_URL")
     if database_url:
-        # Example Aiven URL: mysql://avnadmin:password@host:port/defaultdb?ssl-mode=REQUIRED
+        # Example Aiven URL: mysql://avnadmin:password@host:port/defaultdb
         url = urlparse(database_url)
         db_config = {
             "host": url.hostname,
             "user": url.username,
             "password": url.password,
             "database": url.path.lstrip("/"),
-            "port": url.port or 3306
+            "port": url.port or 3306,
+            "ssl_disabled": False
         }
-        # Parse query parameters (e.g., ssl-mode=REQUIRED)
-        if url.query:
-            query_params = parse_qs(url.query)
-            for k, v in query_params.items():
-                # mysql-connector-python expects ssl_mode (with underscore)
-                config_key = k.replace("-", "_")
-                db_config[config_key] = v[0]
     else:
         db_config = {
             "host": os.getenv("DB_HOST"),
