@@ -1,12 +1,16 @@
 import os
 import json
+import io
 from openai import OpenAI
+from google import genai
+from google.genai import types
+from PIL import Image
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure NVIDIA Client
-# NVIDIA NIM uses the OpenAI-compatible SDK
+# Configure NVIDIA Client for text queries
 api_key = os.getenv("NVIDIA_API_KEY")
 client = None
 if api_key:
@@ -14,6 +18,20 @@ if api_key:
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=api_key
     )
+
+# Configure Google GenAI Client for bill OCR extraction
+gemini_key = os.getenv("GEMINI_API_KEY")
+gemini_client = None
+if gemini_key:
+    gemini_client = genai.Client(api_key=gemini_key)
+
+
+class BillData(BaseModel):
+    vendor_name: str = Field(description="The name of the company/merchant/store issuing the bill")
+    invoice_date: str = Field(description="The date the bill was issued in YYYY-MM-DD format")
+    total_amount: float = Field(description="The final total amount due/paid, including taxes")
+    category: str = Field(description="The suggested category name from options: Food, Transport, Shopping, Rent, Entertainment, Health, Utilities, Education, Savings, or General")
+
 
 class AIService:
     def __init__(self):
@@ -61,14 +79,47 @@ class AIService:
 
     def extract_receipt_data(self, image_data: bytes, mime_type: str = "image/jpeg"):
         """
-        Note: Simple LLMs like Qwen-72B might not support direct image bytes as NIMs 
-        unless using a Vision-specific NIM. For now, we stub this or use a Vision model if available.
-        NVIDIA offers 'nvidia/neva-22b' for vision.
+        Extracts structured bill details from an uploaded receipt/bill image using Gemini 2.0 Flash.
         """
-        # For now, let's try a vision-enabled model if possible or inform user it's text-only.
-        # Stubbing for now to ensure stability.
-        print("Vision feature disabled in Qwen text-only mode.")
-        return None
+        if not gemini_client:
+            print("Gemini API Client is not initialized. Please verify GEMINI_API_KEY.")
+            return None
+
+        try:
+            # Load image from bytes
+            bill_image = Image.open(io.BytesIO(image_data))
+        except Exception as e:
+            print(f"Failed to open receipt image: {e}")
+            return None
+
+        prompt = "Extract the vendor name, invoice date, total amount, and suggested category from this bill image."
+
+        try:
+            response = gemini_client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=[bill_image, prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BillData,
+                    temperature=0.0,
+                ),
+            )
+            
+            if not response.text:
+                return None
+                
+            parsed_data = json.loads(response.text)
+            
+            # Map standard keys
+            return {
+                "amount": float(parsed_data.get("total_amount") or 0.0),
+                "vendor": parsed_data.get("vendor_name") or "Unknown",
+                "date": parsed_data.get("invoice_date") or "",
+                "category": parsed_data.get("category") or "General"
+            }
+        except Exception as e:
+            print(f"Gemini 2.0 OCR Processing Error: {e}")
+            return None
 
     def categorize_expense(self, description: str, categories: list):
         """
@@ -93,5 +144,6 @@ class AIService:
         except Exception as e:
             print(f"Categorization AI Error: {e}")
             return None
+
 
 ai_service = AIService()

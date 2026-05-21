@@ -124,11 +124,36 @@ def ai_parse_text(text: str):
 
 @app.post("/ai/ocr")
 async def ai_ocr_receipt(file: UploadFile = File(...)):
-    content = await file.read()
-    res = ai_service.extract_receipt_data(content, file.content_type)
-    if not res:
-        raise HTTPException(status_code=500, detail="AI failed to process receipt")
-    return res
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file format. Please upload a valid PNG, JPG, or JPEG image."
+        )
+
+    try:
+        content = await file.read()
+        if not content or len(content) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Empty file uploaded. Please upload a valid image."
+            )
+            
+        res = ai_service.extract_receipt_data(content, file.content_type)
+        if not res:
+            raise HTTPException(
+                status_code=500,
+                detail="AI failed to extract structured data from the receipt. Please ensure it is readable."
+            )
+        return res
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR Service error: {str(e)}"
+        )
+
 
 @app.post("/search")
 def search_expenses(query: SearchQuery):
