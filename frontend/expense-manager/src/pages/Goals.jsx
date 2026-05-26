@@ -383,7 +383,7 @@ export default function Goals() {
         </div>
 
         {/* ================= ADD / EDIT FORM ================= */}
-        <div className="mb-10 rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-sm border border-slate-200 dark:border-white/10 relative overflow-hidden group">
+        <div className="mb-10 rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-sm border border-slate-200 dark:border-white/10 relative group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
           
           <h2 className="mb-6 text-lg font-bold flex items-center gap-2 relative z-10">
