@@ -192,6 +192,13 @@ def create_category_if_not_exists(user_id, name):
         cursor = db.cursor(dictionary=True)
 
         name = name.strip()
+        savings_keywords = {
+            "saved", "saving", "savings", "mutual funds", "stocks", "bonds", 
+            "fd", "fixed deposit", "sip", "investment", "investments", 
+            "equity", "gold investment", "crypto", "retirement", "emergency fund"
+        }
+        if name.lower() in savings_keywords:
+            name = "Savings"
 
         # 1. Fetch all existing categories for this user
         cursor.execute(
@@ -203,6 +210,8 @@ def create_category_if_not_exists(user_id, name):
 
         # 2. Use AI semantic matching to decide: reuse existing or create new
         resolved_name = ai_service.map_proposed_category(name, existing_names)
+        if resolved_name.lower() in savings_keywords:
+            resolved_name = "Savings"
 
         # 3. Check if the resolved name already exists (case-insensitive)
         cursor.execute(

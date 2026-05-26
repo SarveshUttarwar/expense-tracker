@@ -149,6 +149,45 @@ def init_db():
             """, (user_id, category_id, month, year, keep_id))
         db.commit()
 
+        # 3. Migrate and normalize all savings-related categories to "Savings" (case-insensitive)
+        cursor.execute("SELECT id FROM users")
+        user_list = [u['id'] for u in cursor.fetchall()]
+        savings_keywords = [
+            "saved", "saving", "savings", "mutual funds", "stocks", "bonds", 
+            "fd", "fixed deposit", "sip", "investment", "investments", 
+            "equity", "gold investment", "crypto", "retirement", "emergency fund"
+        ]
+        
+        for u_id in user_list:
+            # Check if "Savings" category exists for the user, if not create it
+            cursor.execute("SELECT id FROM categories WHERE user_id = %s AND LOWER(name) = 'savings'", (u_id,))
+            savings_row = cursor.fetchone()
+            if savings_row:
+                savings_cat_id = savings_row['id']
+            else:
+                cursor.execute("INSERT INTO categories (name, user_id) VALUES ('Savings', %s)", (u_id,))
+                db.commit()
+                savings_cat_id = cursor.lastrowid
+                
+            # Find all other categories matching savings keywords (excluding the main "Savings" category itself)
+            format_strings = ','.join(['%s'] * len(savings_keywords))
+            query_params = [u_id] + savings_keywords + [savings_cat_id]
+            cursor.execute(f"""
+                SELECT id FROM categories 
+                WHERE user_id = %s AND LOWER(name) IN ({format_strings}) AND id != %s
+            """, query_params)
+            dup_cats = [r['id'] for r in cursor.fetchall()]
+            
+            if dup_cats:
+                dup_format = ','.join(['%s'] * len(dup_cats))
+                # Reassign expenses to "Savings"
+                cursor.execute(f"UPDATE expenses SET category_id = %s WHERE category_id IN ({dup_format})", [savings_cat_id] + dup_cats)
+                # Safely delete duplicate goals to avoid UNIQUE constraint violations
+                cursor.execute(f"DELETE FROM goals WHERE category_id IN ({dup_format})", dup_cats)
+                # Delete duplicate categories
+                cursor.execute(f"DELETE FROM categories WHERE id IN ({dup_format})", dup_cats)
+                db.commit()
+
         # =====================================================
         # ADD UNIQUE CONSTRAINTS AND FOREIGN KEYS
         # =====================================================

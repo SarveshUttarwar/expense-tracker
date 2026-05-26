@@ -21,6 +21,7 @@ import {
   createCategory,
   getCategories,
   deleteGoal,
+  deleteCategory,
 } from "../services/api";
 
 ChartJS.register(
@@ -34,6 +35,95 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
+function CustomSelect({ value, onChange, options, onDelete, placeholder, label, isFilter = false, filterClearButton = null }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const selectedOption = isFilter
+    ? options.find(opt => opt.name.toLowerCase() === value.toLowerCase())
+    : options.find(opt => String(opt.id) === String(value));
+    
+  return (
+    <div className="relative min-w-[160px] select-none">
+      {label && (
+        <label className="block text-xs font-semibold text-slate-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wider">
+          {label}
+        </label>
+      )}
+      
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 ${
+          isFilter ? "px-4 py-2 text-sm" : "px-4 py-3 text-sm"
+        } font-medium text-slate-700 dark:text-zinc-205 focus-within:ring-2 focus-within:ring-indigo-500 outline-none cursor-pointer`}
+      >
+        <span className={selectedOption ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-zinc-500"}>
+          {selectedOption ? selectedOption.name : placeholder}
+        </span>
+        <div className="flex items-center gap-1.5 pointer-events-auto">
+          {filterClearButton}
+          {!selectedOption && (
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </div>
+      </div>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
+          
+          <div className="absolute left-0 right-0 mt-2 z-50 max-h-60 overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 shadow-lg py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+            {isFilter && (
+              <div
+                className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800/50 cursor-pointer text-sm text-slate-700 dark:text-zinc-200 font-medium"
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                }}
+              >
+                All Categories
+              </div>
+            )}
+            {options.length === 0 ? (
+              <div className="px-4 py-2.5 text-xs text-slate-500 text-center">No categories found</div>
+            ) : (
+              options.map((opt) => (
+                <div
+                  key={opt.id}
+                  className="group flex items-center justify-between px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    onChange(isFilter ? opt.name : String(opt.id));
+                    setIsOpen(false);
+                  }}
+                >
+                  <span className="text-sm text-slate-700 dark:text-zinc-200 font-medium">
+                    {opt.name}
+                  </span>
+                  
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(opt.id, opt.name);
+                    }}
+                    className="p-1 text-slate-450 hover:text-rose-500 dark:hover:text-rose-450 hover:bg-rose-55/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Delete Category"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function Goals() {
   const navigate = useNavigate();
@@ -141,6 +231,23 @@ export default function Goals() {
     setLoading(false);
   };
 
+  const handleDeleteCategory = async (catId, catName) => {
+    if (!confirm(`Are you sure you want to delete the category "${catName}"? This will delete all goals set for this category and set category to NULL for all related transactions.`)) return;
+    try {
+      await deleteCategory(catId, userId);
+      if (String(categoryId) === String(catId)) {
+        setCategoryId("");
+      }
+      if (filterCategoryId.toLowerCase() === catName.toLowerCase()) {
+        setFilterCategoryId("");
+      }
+      loadCategories();
+      loadGoals();
+    } catch (err) {
+      alert(err.message || "Failed to delete category");
+    }
+  };
+
   /* ===============================
      SAVE / UPDATE GOAL
      =============================== */
@@ -232,37 +339,29 @@ export default function Goals() {
             </div>            
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider md:ml-4">Category:</span>
-              <div className="relative flex items-center">
-                <select
-                  value={filterCategoryId}
-                  onChange={(e) => setFilterCategoryId(e.target.value)}
-                  className={`rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 ${
-                    filterCategoryId ? "pl-4 pr-10" : "px-4 pr-10"
-                  } py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer`}
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-                  {!filterCategoryId && (
-                    <svg className="w-4 h-4 text-slate-400 dark:text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </div>
-                {filterCategoryId && (
-                  <button
-                    type="button"
-                    onClick={() => setFilterCategoryId("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors font-bold text-xs pointer-events-auto"
-                    title="Clear Category Filter"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              <CustomSelect
+                value={filterCategoryId}
+                onChange={setFilterCategoryId}
+                options={categories}
+                onDelete={handleDeleteCategory}
+                placeholder="All Categories"
+                isFilter={true}
+                filterClearButton={
+                  filterCategoryId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFilterCategoryId("");
+                      }}
+                      className="p-0.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors font-bold text-xs pointer-events-auto"
+                      title="Clear Category Filter"
+                    >
+                      ✕
+                    </button>
+                  ) : null
+                }
+              />
             </div>
 
             <div className="flex items-center gap-2">
@@ -297,17 +396,14 @@ export default function Goals() {
             className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 relative z-10"
           >
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wider">Category</label>
-              <select
+              <CustomSelect
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-              >
-                <option value="">Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+                onChange={setCategoryId}
+                options={categories}
+                onDelete={handleDeleteCategory}
+                placeholder="Select category"
+                label="Category"
+              />
             </div>
 
             <div>
