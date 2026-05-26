@@ -8,6 +8,8 @@ from app.exporter import generate_excel_report, generate_pdf_report
 from app.database import init_db
 import os
 import io
+from datetime import datetime
+from typing import Optional
 
 app = FastAPI()
 
@@ -116,14 +118,14 @@ def delete_goal(goal_id: int, user_id: int = Query(...)):
 # ===================== AI ENDPOINTS =====================
 
 @app.post("/ai/parse")
-def ai_parse_text(text: str):
-    res = ai_service.parse_nlp_expense(text)
+def ai_parse_text(text: str, user_id: Optional[int] = Query(None)):
+    res = ai_service.parse_nlp_expense(text, user_id)
     if not res:
         raise HTTPException(status_code=500, detail="AI failed to parse text")
     return res
 
 @app.post("/ai/ocr")
-async def ai_ocr_receipt(file: UploadFile = File(...)):
+async def ai_ocr_receipt(file: UploadFile = File(...), user_id: Optional[int] = Query(None)):
     # Validate file type
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
@@ -138,8 +140,17 @@ async def ai_ocr_receipt(file: UploadFile = File(...)):
                 status_code=400,
                 detail="Empty file uploaded. Please upload a valid image."
             )
-            
-        res = ai_service.extract_receipt_data(content, file.content_type)
+
+        # Fetch user categories for semantic OCR category matching
+        existing_categories = None
+        if user_id:
+            try:
+                cats = crud.get_categories(user_id)
+                existing_categories = [c["name"] for c in cats] if cats else None
+            except Exception:
+                pass
+
+        res = ai_service.extract_receipt_data(content, file.content_type, existing_categories=existing_categories)
         if not res:
             raise HTTPException(
                 status_code=500,
@@ -166,18 +177,22 @@ def export_expenses(user_id: int, format: str = "pdf"):
     expenses = crud.get_all_expenses_for_export(user_id)
     if not expenses:
         raise HTTPException(status_code=404, detail="No expenses found to export")
-    
+
+    date_stamp = datetime.now().strftime("%Y-%m-%d")
+
     if format == "excel":
         file_stream = generate_excel_report(expenses)
+        filename = f"expenses_{date_stamp}.xlsx"
         return StreamingResponse(
-            file_stream, 
+            file_stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=expenses.xlsx"}
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
     else:
         file_stream = generate_pdf_report(expenses)
+        filename = f"expenses_{date_stamp}.pdf"
         return StreamingResponse(
             file_stream,
             media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=expenses.pdf"}
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )

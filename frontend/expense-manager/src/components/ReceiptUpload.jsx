@@ -21,7 +21,7 @@ export default function ReceiptUpload({ userId, onSuccess }) {
         setNotification(null);
 
         try {
-            const data = await processReceipt(file);
+            const data = await processReceipt(file, userId);
             if (data) {
                 // AI returns { amount, vendor, date, category }
                 const catId = await createCategory(userId, data.category || "General");

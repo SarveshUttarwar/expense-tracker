@@ -126,19 +126,24 @@ export const deleteGoal = async (goal_id, userId) => {
 
 // ===================== AI SERVICES =====================
 
-export async function parseAIExpense(text) {
-  const res = await fetch(`${BASE_URL}/ai/parse?text=${encodeURIComponent(text)}`, {
+export async function parseAIExpense(text, userId) {
+  let url = `${BASE_URL}/ai/parse?text=${encodeURIComponent(text)}`;
+  if (userId) url += `&user_id=${userId}`;
+  const res = await fetch(url, {
     method: "POST"
   });
   if (!res.ok) throw new Error("AI failed to parse text");
   return res.json();
 }
 
-export async function processReceipt(file) {
+export async function processReceipt(file, userId) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${BASE_URL}/ai/ocr`, {
+  let url = `${BASE_URL}/ai/ocr`;
+  if (userId) url += `?user_id=${userId}`;
+
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   });
@@ -159,15 +164,37 @@ export async function searchExpenses(userId, query) {
 // ===================== EXPORT SERVICES =====================
 
 export async function downloadReport(userId, format = "pdf") {
-  const res = await fetch(`${BASE_URL}/expenses/export?user_id=${userId}&format=${format}`);
-  if (!res.ok) throw new Error("Failed to download report");
+  const url = `${BASE_URL}/expenses/export?user_id=${userId}&format=${format}`;
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to download report");
+    }
 
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `expenses.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+    const blob = await res.blob();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const ext = format === 'excel' ? 'xlsx' : 'pdf';
+    const filename = `expenses_${dateStr}.${ext}`;
+
+    // Use anchor-click approach for reliable cross-browser download
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      window.URL.revokeObjectURL(blobUrl);
+      a.remove();
+    }, 100);
+  } catch (err) {
+    console.error("Download error:", err);
+    // Fallback: open in new tab for direct download
+    window.open(url, "_blank");
+  }
 }

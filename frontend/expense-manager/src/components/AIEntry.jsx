@@ -18,7 +18,7 @@ export default function AIEntry({ userId, onSuccess }) {
         setNotification(null);
 
         try {
-            const data = await parseAIExpense(text);
+            const data = await parseAIExpense(text, userId);
             if (data) {
                 const catId = await createCategory(userId, data.category || "General");
 

@@ -1,4 +1,5 @@
 from app.database import get_db, DEFAULT_CATEGORIES
+from app.ai_service import ai_service
 
 
 def seed_categories_for_user(user_id):
@@ -192,16 +193,29 @@ def create_category_if_not_exists(user_id, name):
 
         name = name.strip()
 
+        # 1. Fetch all existing categories for this user
+        cursor.execute(
+            "SELECT id, name FROM categories WHERE user_id=%s",
+            (user_id,),
+        )
+        existing = cursor.fetchall()
+        existing_names = [row["name"] for row in existing]
+
+        # 2. Use AI semantic matching to decide: reuse existing or create new
+        resolved_name = ai_service.map_proposed_category(name, existing_names)
+
+        # 3. Check if the resolved name already exists (case-insensitive)
         cursor.execute(
             "SELECT id FROM categories WHERE LOWER(name)=LOWER(%s) AND user_id=%s",
-            (name, user_id),
+            (resolved_name, user_id),
         )
         category = cursor.fetchone()
 
         if category:
             return category["id"]
 
-        display_name = name.capitalize()
+        # 4. Create new category with the resolved specific name
+        display_name = resolved_name.strip()
 
         cursor.execute(
             "INSERT INTO categories (name, user_id) VALUES (%s, %s)",
