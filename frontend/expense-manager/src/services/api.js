@@ -100,10 +100,15 @@ export async function getCategoryAnalytics(userId, month, year) {
   return res.json();
 }
 
-export async function getDashboardAnalytics(userId, month, year) {
-  const res = await fetch(
-    `${BASE_URL}/analytics/dashboard?user_id=${userId}&month=${month}&year=${year}`
-  );
+export async function getDashboardAnalytics(userId, month, year, startDate, endDate, categoryId) {
+  let url = `${BASE_URL}/analytics/dashboard?user_id=${userId}`;
+  if (month) url += `&month=${month}`;
+  if (year) url += `&year=${year}`;
+  if (startDate) url += `&start_date=${startDate}`;
+  if (endDate) url += `&end_date=${endDate}`;
+  if (categoryId) url += `&category_id=${categoryId}`;
+
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to load dashboard data");
   return res.json();
 }
@@ -197,4 +202,10 @@ export async function downloadReport(userId, format = "pdf") {
     // Fallback: open in new tab for direct download
     window.open(url, "_blank");
   }
+}
+
+export async function getUserStats(userId) {
+  const res = await fetch(`${BASE_URL}/users/stats?user_id=${userId}`);
+  if (!res.ok) throw new Error("Failed to fetch user statistics");
+  return res.json();
 }

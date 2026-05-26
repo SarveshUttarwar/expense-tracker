@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
 import Categories from "./pages/Categories";
 import Goals from "./pages/Goals";
+import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children }) {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -49,6 +50,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Goals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />

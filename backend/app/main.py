@@ -100,8 +100,15 @@ def categories_analytics(user_id: int, month: int, year: int):
     return crud.category_analytics(user_id, month, year)
 
 @app.get("/analytics/dashboard")
-def dashboard_analytics(user_id: int, month: int, year: int):
-    return crud.dashboard_summary(user_id, month, year)
+def dashboard_analytics(
+    user_id: int,
+    month: Optional[int] = Query(None),
+    year: Optional[int] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    category_id: Optional[int] = Query(None)
+):
+    return crud.dashboard_summary(user_id, month, year, start_date, end_date, category_id)
 
 from fastapi import Query
 
@@ -196,3 +203,31 @@ def export_expenses(user_id: int, format: str = "pdf"):
             media_type="application/pdf",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
+
+@app.get("/users/stats")
+def get_user_stats(user_id: int):
+    from app.database import get_db
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # Count expenses
+        cursor.execute("SELECT COUNT(*) AS total_expenses, COALESCE(SUM(amount), 0) AS total_spent FROM expenses WHERE user_id = %s AND LOWER(type) = 'expense'", (user_id,))
+        exp_stats = cursor.fetchone()
+        
+        # Count categories
+        cursor.execute("SELECT COUNT(*) AS total_categories FROM categories WHERE user_id = %s", (user_id,))
+        cat_stats = cursor.fetchone()
+        
+        # Count goals
+        cursor.execute("SELECT COUNT(*) AS total_goals FROM goals WHERE user_id = %s", (user_id,))
+        goal_stats = cursor.fetchone()
+        
+        return {
+            "total_expenses": exp_stats["total_expenses"],
+            "total_spent": float(exp_stats["total_spent"]),
+            "total_categories": cat_stats["total_categories"],
+            "total_goals": goal_stats["total_goals"]
+        }
+    finally:
+        cursor.close()
+        db.close()

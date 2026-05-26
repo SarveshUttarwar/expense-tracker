@@ -93,7 +93,10 @@ def init_db():
         # DATA DEDUPLICATION & MIGRATION BEFORE ADDING CONSTRAINTS
         # =====================================================
 
-        # 1. Deduplicate Categories (keep first inserted, update referencing rows)
+        # 1. Trim name spaces and Deduplicate Categories (keep first inserted, update referencing rows)
+        cursor.execute("UPDATE categories SET name = TRIM(name)")
+        db.commit()
+
         cursor.execute("""
             SELECT user_id, LOWER(name) as name_lower, MIN(id) as keep_id
             FROM categories
@@ -120,6 +123,9 @@ def init_db():
                 cursor.execute(f"UPDATE goals SET category_id = %s WHERE category_id IN ({format_strings})", [keep_id] + to_delete)
                 # Delete duplicate categories
                 cursor.execute(f"DELETE FROM categories WHERE id IN ({format_strings})", to_delete)
+            
+            # Format keep category name to clean Capitalized Proper Case
+            cursor.execute("UPDATE categories SET name = %s WHERE id = %s", (name_lower.title(), keep_id))
         db.commit()
 
         # 2. Deduplicate Goals (keep latest goal/id for same user/category/month/year)

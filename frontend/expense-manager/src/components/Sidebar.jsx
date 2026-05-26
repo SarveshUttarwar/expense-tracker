@@ -12,6 +12,7 @@ export default function Sidebar() {
     { label: "Expenses", to: "/expenses", icon: "💸" },
     { label: "Categories", to: "/categories", icon: "📁" },
     { label: "Goals", to: "/goals", icon: "🎯" },
+    { label: "Profile", to: "/profile", icon: "👤" },
   ];
 
   const handleLogout = () => {

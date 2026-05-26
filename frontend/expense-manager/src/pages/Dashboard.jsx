@@ -10,7 +10,7 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
-import { getDashboardAnalytics, downloadReport, searchExpenses } from "../services/api";
+import { getDashboardAnalytics, downloadReport, searchExpenses, getCategories } from "../services/api";
 import AIEntry from "../components/AIEntry";
 import ReceiptUpload from "../components/ReceiptUpload";
 import { useTheme } from "../contexts/ThemeContext";
@@ -30,8 +30,15 @@ export default function Dashboard() {
   const userId = user?.id;
 
   const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
+  const defaultMonth = now.getMonth() + 1;
+  const defaultYear = now.getFullYear();
+
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [selectedYear, setSelectedYear] = useState(defaultYear);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [categoriesList, setCategoriesList] = useState([]);
 
   const [currentMonth, setCurrentMonth] = useState({});
   const [previousMonth, setPreviousMonth] = useState({});
@@ -47,14 +54,26 @@ export default function Dashboard() {
       navigate("/");
       return;
     }
-    loadDashboard();
+    getCategories(userId).then(setCategoriesList).catch(console.error);
   }, [userId, navigate]);
+
+  useEffect(() => {
+    if (!userId) return;
+    loadDashboard();
+  }, [userId, selectedMonth, selectedYear, startDate, endDate, selectedCategory]);
 
   const loadDashboard = async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const data = await getDashboardAnalytics(userId, month, year);
+      const data = await getDashboardAnalytics(
+        userId,
+        startDate && endDate ? null : selectedMonth,
+        startDate && endDate ? null : selectedYear,
+        startDate || null,
+        endDate || null,
+        selectedCategory || null
+      );
       const current = {};
       data.current.forEach((d) => {
         current[d.category] = Number(d.total);
@@ -250,6 +269,98 @@ export default function Dashboard() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* FILTERS */}
+        <div className="mb-10 p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-wrap items-center justify-between gap-6">
+          <div className="flex flex-wrap items-center gap-6">
+            {/* Category Dropdown */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Filter by Category</span>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none min-w-[160px]"
+              >
+                <option value="">All Categories</option>
+                {categoriesList.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Month & Year Select (clears date range) */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Period</span>
+              <div className="flex gap-2">
+                <select
+                  value={startDate && endDate ? "" : selectedMonth}
+                  onChange={(e) => {
+                    setStartDate("");
+                    setEndDate("");
+                    setSelectedMonth(Number(e.target.value));
+                  }}
+                  className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  {[
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
+                  ].map((m, i) => (
+                    <option key={i} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={startDate && endDate ? "" : selectedYear}
+                  onChange={(e) => {
+                    setStartDate("");
+                    setEndDate("");
+                    setSelectedYear(Number(e.target.value));
+                  }}
+                  placeholder="Year"
+                  className="w-24 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Custom Date Range (clears Month/Year) */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Custom Date Range</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                  }}
+                  className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <span className="text-slate-400 text-xs font-semibold">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                  }}
+                  className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Reset Filters Button */}
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+              setSelectedCategory("");
+              setSelectedMonth(defaultMonth);
+              setSelectedYear(defaultYear);
+            }}
+            className="rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 border border-transparent px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 transition-all shadow-sm flex items-center gap-1.5"
+          >
+            🔄 Reset
+          </button>
         </div>
 
         {/* AI WIDGETS */}
