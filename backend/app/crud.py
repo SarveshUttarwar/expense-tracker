@@ -339,14 +339,13 @@ def get_goals_summary(user_id, month, year):
             FROM goals g
             JOIN categories c ON g.category_id = c.id
             LEFT JOIN expenses e
-              ON g.category_id = e.category_id
-             AND g.user_id = e.user_id
+              ON g.user_id = e.user_id
              AND MONTH(e.expense_date) = g.month
              AND YEAR(e.expense_date) = g.year
              AND (
                (LOWER(c.name) IN ('savings', 'saving') AND LOWER(e.type) = 'saving')
                OR
-               (LOWER(c.name) NOT IN ('savings', 'saving') AND LOWER(e.type) = 'expense')
+               (LOWER(c.name) NOT IN ('savings', 'saving') AND g.category_id = e.category_id AND LOWER(e.type) = 'expense')
              )
             WHERE g.user_id = %s
               AND g.month = %s
@@ -472,9 +471,21 @@ def dashboard_summary(user_id, month=None, year=None, start_date=None, end_date=
         # 2. Build Category Filters
         cat_filter_sql = ""
         cat_filter_params = []
+        is_savings_category = False
         if category_id:
-            cat_filter_sql = "AND e.category_id = %s"
-            cat_filter_params = [category_id]
+            cursor.execute("SELECT name FROM categories WHERE id = %s", (category_id,))
+            cat_row = cursor.fetchone()
+            if cat_row:
+                cat_name = cat_row["name"].lower()
+                if cat_name in ("saving", "savings"):
+                    is_savings_category = True
+            
+            if is_savings_category:
+                # If filtered by savings category, return no expenses (since savings aren't expenses)
+                cat_filter_sql = "AND e.category_id = -1"
+            else:
+                cat_filter_sql = "AND e.category_id = %s"
+                cat_filter_params = [category_id]
 
         # Use LEFT JOIN categories to ensure uncategorized items (category_id = NULL) are included
         query = f"""
@@ -499,14 +510,25 @@ def dashboard_summary(user_id, month=None, year=None, start_date=None, end_date=
         previous = [{"category": r["category"], "total": float(r["prev_total"] or 0)} for r in combined_expenses if r["prev_total"] > 0]
 
         # 3. Fetch savings for current and previous period
+        if category_id:
+            if is_savings_category:
+                savings_filter_sql = ""
+                savings_filter_params = []
+            else:
+                savings_filter_sql = "AND 1=0"
+                savings_filter_params = []
+        else:
+            savings_filter_sql = ""
+            savings_filter_params = []
+
         savings_query = f"""
             SELECT
                 SUM(CASE WHEN expense_date BETWEEN %s AND %s THEN amount ELSE 0 END) AS savings_current,
                 SUM(CASE WHEN expense_date BETWEEN %s AND %s THEN amount ELSE 0 END) AS savings_previous
             FROM expenses
-            WHERE user_id = %s AND LOWER(type) = 'saving' {cat_filter_sql}
+            WHERE user_id = %s AND LOWER(type) = 'saving' {savings_filter_sql}
         """
-        savings_params = [cur_start, cur_end, prev_start, prev_end, user_id] + cat_filter_params
+        savings_params = [cur_start, cur_end, prev_start, prev_end, user_id] + savings_filter_params
         cursor.execute(savings_query, tuple(savings_params))
         savings_data = cursor.fetchone()
 

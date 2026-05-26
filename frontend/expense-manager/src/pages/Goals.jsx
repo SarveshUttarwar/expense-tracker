@@ -229,26 +229,34 @@ export default function Goals() {
                 onChange={(e) => setYear(Number(e.target.value))}
                 className="w-24 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-4 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
               />
-            </div>
-
+            </div>            
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider md:ml-4">Category:</span>
-              <div className="relative flex items-center gap-1.5">
+              <div className="relative flex items-center">
                 <select
                   value={filterCategoryId}
                   onChange={(e) => setFilterCategoryId(e.target.value)}
-                  className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-4 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className={`rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 ${
+                    filterCategoryId ? "pl-4 pr-10" : "px-4 pr-10"
+                  } py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer`}
                 >
                   <option value="">All Categories</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                 </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                  {!filterCategoryId && (
+                    <svg className="w-4 h-4 text-slate-400 dark:text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </div>
                 {filterCategoryId && (
                   <button
                     type="button"
                     onClick={() => setFilterCategoryId("")}
-                    className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors font-bold text-xs"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors font-bold text-xs pointer-events-auto"
                     title="Clear Category Filter"
                   >
                     ✕
