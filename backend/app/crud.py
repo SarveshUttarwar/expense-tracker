@@ -343,7 +343,11 @@ def get_goals_summary(user_id, month, year):
              AND g.user_id = e.user_id
              AND MONTH(e.expense_date) = g.month
              AND YEAR(e.expense_date) = g.year
-             AND LOWER(e.type) = 'expense'
+             AND (
+               (LOWER(c.name) IN ('savings', 'saving') AND LOWER(e.type) = 'saving')
+               OR
+               (LOWER(c.name) NOT IN ('savings', 'saving') AND LOWER(e.type) = 'expense')
+             )
             WHERE g.user_id = %s
               AND g.month = %s
               AND g.year = %s

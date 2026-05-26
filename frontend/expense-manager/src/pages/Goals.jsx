@@ -49,6 +49,11 @@ export default function Goals() {
   const [visualization, setVisualization] = useState("progress");
   const [trendData, setTrendData] = useState([]);
   const [trendLoading, setTrendLoading] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState("");
+
+  const filteredGoals = filterCategoryId
+    ? goals.filter(g => g.category.toLowerCase() === filterCategoryId.toLowerCase())
+    : goals;
 
   /* ===============================
      ADD / EDIT GOAL STATE
@@ -79,9 +84,13 @@ export default function Goals() {
       const summaries = await Promise.all(
         monthsList.map(async ({ m, y }) => {
           const res = await getGoalsSummary(userId, m, y);
-          const totalBudget = res.filter(g => g.category.toLowerCase() !== "savings").reduce((a, b) => a + b.goal, 0);
-          const totalSpent = res.filter(g => g.category.toLowerCase() !== "savings").reduce((a, b) => a + b.spent, 0);
-          const savingsObj = res.find(g => g.category.toLowerCase() === "savings");
+          const categoryFilteredGoals = filterCategoryId
+            ? res.filter(g => g.category.toLowerCase() === filterCategoryId.toLowerCase())
+            : res;
+
+          const totalBudget = categoryFilteredGoals.filter(g => !["savings", "saving"].includes(g.category.toLowerCase())).reduce((a, b) => a + b.goal, 0);
+          const totalSpent = categoryFilteredGoals.filter(g => !["savings", "saving"].includes(g.category.toLowerCase())).reduce((a, b) => a + b.spent, 0);
+          const savingsObj = categoryFilteredGoals.find(g => ["savings", "saving"].includes(g.category.toLowerCase()));
           const totalSaved = savingsObj ? savingsObj.spent : 0;
           
           const ms = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -114,7 +123,7 @@ export default function Goals() {
     if (visualization === "trend") {
       loadTrendData();
     }
-  }, [userId, month, year, visualization]);
+  }, [userId, month, year, visualization, filterCategoryId]);
 
   const loadCategories = async () => {
     try {
@@ -223,6 +232,32 @@ export default function Goals() {
             </div>
 
             <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider md:ml-4">Category:</span>
+              <div className="relative flex items-center gap-1.5">
+                <select
+                  value={filterCategoryId}
+                  onChange={(e) => setFilterCategoryId(e.target.value)}
+                  className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-4 py-2 text-sm font-medium text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+                {filterCategoryId && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategoryId("")}
+                    className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors font-bold text-xs"
+                    title="Clear Category Filter"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider md:ml-4">Visualization:</span>
               <select
                 value={visualization}
@@ -320,15 +355,21 @@ export default function Goals() {
             <p className="text-lg font-bold text-slate-700 dark:text-zinc-300">No goals set for this month</p>
             <p className="text-sm text-slate-500 dark:text-zinc-500 mt-2 max-w-sm">Use the form above to set your first budget or savings goal and start tracking your progress.</p>
           </div>
+        ) : filteredGoals.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-300 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-900/50 p-12 text-center flex flex-col items-center">
+            <span className="text-4xl mb-4">🔍</span>
+            <p className="text-lg font-bold text-slate-700 dark:text-zinc-300">No goals matching the selected category</p>
+            <p className="text-sm text-slate-500 dark:text-zinc-500 mt-2 max-w-sm">Clear the category filter or set a goal for this category to view it.</p>
+          </div>
         ) : (
           <div>
             {visualization === "progress" && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {goals.map((g) => {
+                {filteredGoals.map((g) => {
                   const remaining = g.goal - g.spent;
                   const percent = Math.min((g.spent / g.goal) * 100, 100);
-                  const isOver = remaining < 0 && g.category.toLowerCase() !== "savings";
-                  const isSavings = g.category.toLowerCase() === "savings";
+                  const isOver = remaining < 0 && !["savings", "saving"].includes(g.category.toLowerCase());
+                  const isSavings = ["savings", "saving"].includes(g.category.toLowerCase());
 
                   return (
                     <div
@@ -411,25 +452,25 @@ export default function Goals() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-sm">
                   <h4 className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Total Monthly Budget Limit</h4>
-                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{goals.filter(g => g.category.toLowerCase() !== "savings").reduce((a, b) => a + b.goal, 0)}</p>
+                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{filteredGoals.filter(g => !["savings", "saving"].includes(g.category.toLowerCase())).reduce((a, b) => a + b.goal, 0)}</p>
                 </div>
                 <div className="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-sm">
                   <h4 className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Total Spent against Budget</h4>
-                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{goals.filter(g => g.category.toLowerCase() !== "savings").reduce((a, b) => a + b.spent, 0)}</p>
+                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{filteredGoals.filter(g => !["savings", "saving"].includes(g.category.toLowerCase())).reduce((a, b) => a + b.spent, 0)}</p>
                 </div>
                 <div className="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-sm">
                   <h4 className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Remaining Budget Limit</h4>
                   <p className="text-3xl font-black text-slate-800 dark:text-white">₹{
-                    goals.filter(g => g.category.toLowerCase() !== "savings").reduce((a, b) => a + (b.goal - b.spent), 0)
+                    filteredGoals.filter(g => !["savings", "saving"].includes(g.category.toLowerCase())).reduce((a, b) => a + (b.goal - b.spent), 0)
                   }</p>
                 </div>
                 <div className="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-sm">
                   <h4 className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Savings Goal Target</h4>
-                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{goals.find(g => g.category.toLowerCase() === "savings")?.goal || 0}</p>
+                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{filteredGoals.find(g => ["savings", "saving"].includes(g.category.toLowerCase()))?.goal || 0}</p>
                 </div>
                 <div className="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-sm">
                   <h4 className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Total Saved this Month</h4>
-                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{goals.find(g => g.category.toLowerCase() === "savings")?.spent || 0}</p>
+                  <p className="text-3xl font-black text-slate-800 dark:text-white">₹{filteredGoals.find(g => ["savings", "saving"].includes(g.category.toLowerCase()))?.spent || 0}</p>
                 </div>
               </div>
             )}
@@ -439,9 +480,9 @@ export default function Goals() {
                 <h3 className="text-center font-bold mb-6 text-slate-800 dark:text-zinc-200">Spending Breakdown by Category</h3>
                 <Pie
                   data={{
-                    labels: goals.map(g => g.category),
+                    labels: filteredGoals.map(g => g.category),
                     datasets: [{
-                      data: goals.map(g => g.spent),
+                      data: filteredGoals.map(g => g.spent),
                       backgroundColor: [
                         "#6366f1", "#10b981", "#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4"
                       ]
@@ -456,16 +497,16 @@ export default function Goals() {
                 <h3 className="font-bold mb-6 text-slate-800 dark:text-zinc-200">Budget Limit vs Actual Spent</h3>
                 <Bar
                   data={{
-                    labels: goals.map(g => g.category),
+                    labels: filteredGoals.map(g => g.category),
                     datasets: [
                       {
                         label: "Monthly Budget Limit",
-                        data: goals.map(g => g.goal),
+                        data: filteredGoals.map(g => g.goal),
                         backgroundColor: "#6366f1",
                       },
                       {
                         label: "Actual Spent",
-                        data: goals.map(g => g.spent),
+                        data: filteredGoals.map(g => g.spent),
                         backgroundColor: "#ef4444",
                       }
                     ]
@@ -485,11 +526,11 @@ export default function Goals() {
                 <h3 className="font-bold mb-6 text-slate-800 dark:text-zinc-200">Budget Limit and Spending Line Graph</h3>
                 <Line
                   data={{
-                    labels: goals.map(g => g.category),
+                    labels: filteredGoals.map(g => g.category),
                     datasets: [
                       {
                         label: "Monthly Budget Limit",
-                        data: goals.map(g => g.goal),
+                        data: filteredGoals.map(g => g.goal),
                         borderColor: "#6366f1",
                         backgroundColor: "rgba(99, 102, 241, 0.1)",
                         fill: true,
@@ -497,7 +538,7 @@ export default function Goals() {
                       },
                       {
                         label: "Actual Spent",
-                        data: goals.map(g => g.spent),
+                        data: filteredGoals.map(g => g.spent),
                         borderColor: "#ef4444",
                         backgroundColor: "rgba(239, 68, 68, 0.1)",
                         fill: true,
