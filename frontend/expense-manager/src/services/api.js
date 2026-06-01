@@ -60,6 +60,12 @@ export async function getGoalsSummary(userId, month, year) {
   return res.json();
 }
 
+export async function getAllGoalsSummary(userId) {
+  const res = await fetch(`${BASE_URL}/goals/all?user_id=${userId}`);
+  if (!res.ok) throw new Error("Failed to fetch all goals summary");
+  return res.json();
+}
+
 export async function saveGoal(goal) {
   const res = await fetch(`${BASE_URL}/goals`, {
     method: "POST",

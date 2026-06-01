@@ -392,6 +392,72 @@ def get_goals_summary(user_id, month, year):
             db.close()
 
 
+def get_all_goals_summary(user_id):
+    db = None
+    cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                g.id,
+                g.user_id,
+                g.category_id,
+                c.name AS category_name,
+                g.monthly_goal,
+                g.month,
+                g.year,
+                COALESCE(SUM(e.amount), 0) AS spent
+            FROM goals g
+            JOIN categories c ON g.category_id = c.id
+            LEFT JOIN expenses e
+              ON g.user_id = e.user_id
+             AND MONTH(e.expense_date) = g.month
+             AND YEAR(e.expense_date) = g.year
+             AND (
+               (LOWER(c.name) IN ('savings', 'saving') AND LOWER(e.type) = 'saving')
+               OR
+               (LOWER(c.name) NOT IN ('savings', 'saving') AND g.category_id = e.category_id AND LOWER(e.type) = 'expense')
+             )
+            WHERE g.user_id = %s
+            GROUP BY g.id, g.user_id, g.category_id, c.name, g.monthly_goal, g.month, g.year
+            ORDER BY g.year DESC, g.month DESC
+            """,
+            (user_id,),
+        )
+        data = cursor.fetchall()
+        
+        normalized_data = []
+        for r in data:
+            monthly_goal = float(r["monthly_goal"])
+            spent = float(r["spent"])
+            remaining = monthly_goal - spent
+            progress_percent = min((spent / monthly_goal) * 100, 100) if monthly_goal > 0 else 0
+            
+            normalized_data.append({
+                "id": r["id"],
+                "category_id": r["category_id"],
+                "category_name": r["category_name"],
+                "category": r["category_name"],
+                "monthly_goal": monthly_goal,
+                "goal": monthly_goal,
+                "spent": spent,
+                "remaining": remaining,
+                "progress_percent": progress_percent,
+                "month": r["month"],
+                "year": r["year"]
+            })
+            
+        return normalized_data
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+
 # =====================================================
 # CATEGORY ANALYTICS
 # =====================================================

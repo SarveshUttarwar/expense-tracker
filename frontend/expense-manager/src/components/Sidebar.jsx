@@ -1,10 +1,11 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
   const items = [
@@ -68,16 +69,17 @@ export default function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
-                `
+              className={({ isActive }) => {
+                const isCurrentlyActive = isActive || (item.to === "/goals" && location.pathname === "/goal-analytics");
+                return `
                   flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 group
                   ${
-                    isActive
+                    isCurrentlyActive
                       ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm"
                       : "text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800/50 hover:text-slate-900 dark:hover:text-white"
                   }
-                `
-              }
+                `;
+              }}
               title={collapsed ? item.label : undefined}
             >
               <span className={`text-lg transition-transform duration-200 group-hover:scale-110 ${collapsed ? "mx-auto" : ""}`}>
@@ -128,14 +130,15 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-semibold transition-all duration-200
+            className={({ isActive }) => {
+              const isCurrentlyActive = isActive || (item.to === "/goals" && location.pathname === "/goal-analytics");
+              return `flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-semibold transition-all duration-200
               ${
-                isActive
+                isCurrentlyActive
                   ? "text-indigo-600 dark:text-indigo-400 font-bold"
                   : "text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-400"
-              }`
-            }
+              }`;
+            }}
           >
             <span className="text-lg mb-0.5">{item.icon}</span>
             <span>{item.label}</span>

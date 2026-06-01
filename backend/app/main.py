@@ -80,6 +80,10 @@ def create_category(user_id: int, name: str):
 def goals_summary(user_id: int, month: int, year: int):
     return crud.get_goals_summary(user_id, month, year)
 
+@app.get("/goals/all")
+def list_all_goals_summary(user_id: int):
+    return crud.get_all_goals_summary(user_id)
+
 @app.get("/categories")
 def list_categories(user_id: int):
     cats = crud.get_categories(user_id)

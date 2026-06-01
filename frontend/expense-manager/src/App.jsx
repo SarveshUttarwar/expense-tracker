@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
 import Categories from "./pages/Categories";
 import Goals from "./pages/Goals";
+import GoalAnalytics from "./pages/GoalAnalytics";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children }) {
@@ -50,6 +51,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Goals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/goal-analytics"
+            element={
+              <ProtectedRoute>
+                <GoalAnalytics />
               </ProtectedRoute>
             }
           />

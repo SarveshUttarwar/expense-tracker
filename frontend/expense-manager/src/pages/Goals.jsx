@@ -366,10 +366,20 @@ export default function Goals() {
       <Sidebar />
 
       <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 overflow-y-auto">
-        <h1 className="text-3xl font-bold tracking-tight">Spending Goals</h1>
-        <p className="mt-1 mb-8 text-slate-500 dark:text-zinc-400 font-medium">
-          Set targets and track your monthly budget progress
-        </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Spending Goals</h1>
+            <p className="mt-1 text-slate-500 dark:text-zinc-400 font-medium">
+              Set targets and track your monthly budget progress
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/goal-analytics")}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm text-white shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <span>📊</span> Analytics Dashboard
+          </button>
+        </div>
 
         {/* ================= FILTER & VISUALIZATION SELECTION ================= */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10">
@@ -531,14 +541,29 @@ export default function Goals() {
                   const percent = Math.min((g.spent / g.goal) * 100, 100);
                   const isOver = remaining < 0 && !["savings", "saving"].includes(g.category.toLowerCase());
                   const isSavings = ["savings", "saving"].includes(g.category.toLowerCase());
+                  const isMet = isSavings ? (g.spent >= g.goal) : (g.spent <= g.goal);
+
+                  let cardStyle = "border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900";
+                  if (isPastMonth) {
+                    if (isMet) {
+                      cardStyle = "border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/5 dark:bg-emerald-500/2";
+                    } else {
+                      if (isSavings) {
+                        cardStyle = "border-amber-200 dark:border-amber-500/25 bg-amber-50/5 dark:bg-amber-500/2";
+                      } else {
+                        cardStyle = "border-rose-200 dark:border-rose-500/25 bg-rose-50/5 dark:bg-rose-500/2";
+                      }
+                    }
+                  } else {
+                    if (isOver) {
+                      cardStyle = "border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-500/5";
+                    }
+                  }
 
                   return (
                     <div
                       key={g.category}
-                      className={`relative overflow-hidden rounded-3xl p-6 border shadow-sm transition-all hover:shadow-md ${isOver
-                        ? "border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-500/5"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900"
-                        }`}
+                      className={`relative overflow-hidden rounded-3xl p-6 border shadow-sm transition-all hover:shadow-md ${cardStyle}`}
                     >
                       <div className="mb-4 flex justify-between items-start">
                         <div>
@@ -608,22 +633,22 @@ export default function Goals() {
                         <div className={`mt-4 px-3.5 py-2.5 rounded-2xl border text-xs font-semibold ${
                           isSavings 
                             ? (g.spent >= g.goal
-                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                                : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400")
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450"
+                                : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-450")
                             : (g.spent <= g.goal
-                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400")
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450"
+                                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-455")
                         }`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-base leading-none">
                               {isSavings 
-                                ? (g.spent >= g.goal ? "🎉" : "⚠️") 
-                                : (g.spent <= g.goal ? "🎉" : "⚠️")}
+                                ? (g.spent >= g.goal ? "✅" : "⚠️") 
+                                : (g.spent <= g.goal ? "✅" : "🚨")}
                             </span>
-                            <span>
+                            <span className="flex-1">
                               {isSavings
-                                ? (g.spent >= g.goal ? "Success! Savings target met." : "Savings target was not fully met.")
-                                : (g.spent <= g.goal ? "Success! Spent within budget limit." : "You are overspending in this category, be mindful.")
+                                ? (g.spent >= g.goal ? "Congratulations! You met your savings target." : "Savings target was not fully met.")
+                                : (g.spent <= g.goal ? "Congratulations! You stayed within your target for this category." : "You are overspending in this category. Please be mindful of your spending.")
                               }
                             </span>
                           </div>
