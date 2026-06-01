@@ -43,7 +43,7 @@ export function ConfirmProvider({ children }) {
   } = options;
 
   return (
-    <ConfirmContext.Provider value={{ confirm }}>
+    <ConfirmContext.Provider value={confirm}>
       {children}
       
       {isOpen && (
@@ -99,8 +99,8 @@ export function ConfirmProvider({ children }) {
                 onClick={handleConfirm}
                 className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all cursor-pointer ${
                   type === "danger"
-                    ? "bg-rose-650 hover:bg-rose-550 shadow-rose-600/20 hover:shadow-rose-600/30"
-                    : "bg-indigo-650 hover:bg-indigo-550 shadow-indigo-600/20 hover:shadow-indigo-600/30"
+                    ? "bg-rose-600 hover:bg-rose-500 shadow-rose-600/20 hover:shadow-rose-600/30"
+                    : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20 hover:shadow-indigo-600/30"
                 }`}
               >
                 {confirmLabel}
