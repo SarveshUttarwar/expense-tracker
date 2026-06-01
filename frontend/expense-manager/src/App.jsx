@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { ConfirmProvider } from "./contexts/ConfirmContext";
 import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
 import Categories from "./pages/Categories";
@@ -21,7 +22,8 @@ export default function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
-        <BrowserRouter>
+        <ConfirmProvider>
+          <BrowserRouter>
           <Routes>
           <Route path="/" element={<Login />} />
           <Route
@@ -73,7 +75,8 @@ export default function App() {
             }
           />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </ConfirmProvider>
     </NotificationProvider>
   </ThemeProvider>
   );

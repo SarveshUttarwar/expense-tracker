@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { useNotification } from "../contexts/NotificationContext";
+import { useConfirm } from "../contexts/ConfirmContext";
 import {
   getExpenses,
   addExpense,
@@ -13,6 +14,7 @@ import {
 export default function Expenses() {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const confirm = useConfirm();
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
 
@@ -57,7 +59,14 @@ export default function Expenses() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Delete this transaction?")) return;
+    const isConfirmed = await confirm({
+      title: "Delete Transaction",
+      message: "Are you sure you want to delete this transaction?",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
     try {
       await deleteExpense(id, userId);
       showNotification("Transaction deleted successfully!", "success");

@@ -16,6 +16,7 @@ import {
 import { Bar, Pie, Line } from "react-chartjs-2";
 import { useTheme } from "../contexts/ThemeContext";
 import { useNotification } from "../contexts/NotificationContext";
+import { useConfirm } from "../contexts/ConfirmContext";
 import {
   getGoalsSummary,
   saveGoal,
@@ -129,6 +130,7 @@ function CustomSelect({ value, onChange, options, onDelete, placeholder, label, 
 export default function Goals() {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const confirm = useConfirm();
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
 
@@ -290,7 +292,14 @@ export default function Goals() {
   };
 
   const handleDeleteCategory = async (catId, catName) => {
-    if (!confirm(`Are you sure you want to delete the category "${catName}"? This will delete all goals set for this category and set category to NULL for all related transactions.`)) return;
+    const isConfirmed = await confirm({
+      title: "Delete Category",
+      message: `Are you sure you want to delete the category "${catName}"? This will delete all goals set for this category and set category to NULL for all related transactions.`,
+      confirmLabel: "Delete Category",
+      cancelLabel: "Cancel",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
     try {
       await deleteCategory(catId, userId);
       if (String(categoryId) === String(catId)) {
@@ -343,7 +352,14 @@ export default function Goals() {
   };
 
   const handleDeleteGoal = async (goalId) => {
-    if (!confirm("Are you sure you want to delete this spending goal?")) return;
+    const isConfirmed = await confirm({
+      title: "Delete Goal",
+      message: "Are you sure you want to delete this spending goal?",
+      confirmLabel: "Delete Goal",
+      cancelLabel: "Cancel",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
     try {
       await deleteGoal(goalId, userId);
       showNotification("Goal deleted successfully!", "success");
