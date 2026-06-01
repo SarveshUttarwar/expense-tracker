@@ -41,7 +41,7 @@ def get_db():
     if pool is None:
         pool = pooling.MySQLConnectionPool(
             pool_name="mypool",
-            pool_size=5,
+            pool_size=25,
             **get_db_config()
         )
     return pool.get_connection()

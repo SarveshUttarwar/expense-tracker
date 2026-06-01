@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import { useNotification } from "../contexts/NotificationContext";
 import {
   getExpenses,
   addExpense,
@@ -11,6 +12,7 @@ import {
 
 export default function Expenses() {
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
 
@@ -56,56 +58,64 @@ export default function Expenses() {
 
   const handleDelete = async (id) => {
     if (!confirm("Delete this transaction?")) return;
-    await deleteExpense(id, userId);
-    loadTransactions();
+    try {
+      await deleteExpense(id, userId);
+      showNotification("Transaction deleted successfully!", "success");
+      loadTransactions();
+    } catch (err) {
+      showNotification(err.message || "Failed to delete transaction", "error");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     let finalCategoryId = null;
 
-    if (form.type === "expense") {
-      if (form.custom_category.trim()) {
-        // Create or fetch existing category by name
-        const newCategory = await createCategory(userId, form.custom_category);
-        finalCategoryId = newCategory.id;
-        // Refresh categories list so new category appears in dropdown
-        loadCategories();
-      } else {
-        finalCategoryId = form.category_id;
+    try {
+      if (form.type === "expense") {
+        if (form.custom_category.trim()) {
+          const newCategory = await createCategory(userId, form.custom_category);
+          finalCategoryId = newCategory.id;
+          loadCategories();
+        } else {
+          finalCategoryId = form.category_id;
+        }
+
+        if (!finalCategoryId) {
+          showNotification("Please select or enter a category", "warning");
+          return;
+        }
       }
 
-      if (!finalCategoryId) {
-        alert("Please select or enter a category");
-        return;
-      }
+      await addExpense({
+        user_id: userId,
+        category_id: finalCategoryId,
+        amount: Number(form.amount),
+        description: form.description,
+        expense_date: form.expense_date,
+        type: form.type,
+        is_recurring: form.is_recurring,
+        recurrence_interval: form.recurrence_interval,
+      });
+
+      showNotification("Transaction added successfully!", "success");
+
+      setForm({
+        amount: "",
+        description: "",
+        expense_date: "",
+        category_id: "",
+        custom_category: "",
+        type: "expense",
+        is_recurring: false,
+        recurrence_interval: "",
+      });
+
+      setShowForm(false);
+      loadTransactions();
+    } catch (err) {
+      showNotification(err.message || "Failed to add transaction", "error");
     }
-
-    await addExpense({
-      user_id: userId,
-      category_id: finalCategoryId,
-      amount: Number(form.amount),
-      description: form.description,
-      expense_date: form.expense_date,
-      type: form.type,
-      is_recurring: form.is_recurring,
-      recurrence_interval: form.recurrence_interval,
-    });
-
-    setForm({
-      amount: "",
-      description: "",
-      expense_date: "",
-      category_id: "",
-      custom_category: "",
-      type: "expense",
-      is_recurring: false,
-      recurrence_interval: "",
-    });
-
-    setShowForm(false);
-    loadTransactions();
   };
 
   return (

@@ -15,6 +15,7 @@ import {
 } from "chart.js";
 import { Bar, Pie, Line } from "react-chartjs-2";
 import { useTheme } from "../contexts/ThemeContext";
+import { useNotification } from "../contexts/NotificationContext";
 import {
   getGoalsSummary,
   saveGoal,
@@ -127,6 +128,7 @@ function CustomSelect({ value, onChange, options, onDelete, placeholder, label, 
 
 export default function Goals() {
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
 
@@ -297,10 +299,11 @@ export default function Goals() {
       if (filterCategoryId.toLowerCase() === catName.toLowerCase()) {
         setFilterCategoryId("");
       }
+      showNotification(`Category "${catName}" deleted successfully!`, "success");
       loadCategories();
       loadGoals();
     } catch (err) {
-      alert(err.message || "Failed to delete category");
+      showNotification(err.message || "Failed to delete category", "error");
     }
   };
 
@@ -310,37 +313,43 @@ export default function Goals() {
   const handleSaveGoal = async (e) => {
     e.preventDefault();
 
-    let finalCategoryId = categoryId;
+    try {
+      let finalCategoryId = categoryId;
 
-    if (customCategory.trim()) {
-      const newCat = await createCategory(userId, customCategory);
-      finalCategoryId = newCat.id;
-      // Reload categories so the new one shows in dropdown
-      loadCategories();
+      if (customCategory.trim()) {
+        const newCat = await createCategory(userId, customCategory);
+        finalCategoryId = newCat.id;
+        loadCategories();
+      }
+
+      await saveGoal({
+        user_id: userId,
+        category_id: Number(finalCategoryId),
+        monthly_goal: Number(goalAmount),
+        month,
+        year,
+      });
+
+      showNotification("Goal saved successfully!", "success");
+
+      setCategoryId("");
+      setCustomCategory("");
+      setGoalAmount("");
+      setEditingCategory(null);
+      loadGoals();
+    } catch (err) {
+      showNotification(err.message || "Failed to save goal", "error");
     }
-
-    await saveGoal({
-      user_id: userId,
-      category_id: Number(finalCategoryId),
-      monthly_goal: Number(goalAmount),
-      month,
-      year,
-    });
-
-    setCategoryId("");
-    setCustomCategory("");
-    setGoalAmount("");
-    setEditingCategory(null);
-    loadGoals();
   };
 
   const handleDeleteGoal = async (goalId) => {
     if (!confirm("Are you sure you want to delete this spending goal?")) return;
     try {
       await deleteGoal(goalId, userId);
+      showNotification("Goal deleted successfully!", "success");
       loadGoals();
     } catch (err) {
-      alert(err.message || "Failed to delete goal");
+      showNotification(err.message || "Failed to delete goal", "error");
     }
   };
 

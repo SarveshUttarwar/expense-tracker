@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { getUserStats, resetPassword } from "../services/api";
+import { useNotification } from "../contexts/NotificationContext";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
   const username = user?.username;
@@ -50,11 +52,13 @@ export default function Profile() {
 
     if (newPassword !== confirmPassword) {
       setErrorMsg("Passwords do not match");
+      showNotification("Passwords do not match", "error");
       return;
     }
 
     if (newPassword.length < 6) {
       setErrorMsg("Password must be at least 6 characters long");
+      showNotification("Password must be at least 6 characters long", "error");
       return;
     }
 
@@ -62,10 +66,12 @@ export default function Profile() {
     try {
       await resetPassword(username, newPassword);
       setSuccessMsg("Password updated successfully!");
+      showNotification("Password updated successfully!", "success");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
       setErrorMsg(err.message || "Failed to update password");
+      showNotification(err.message || "Failed to update password", "error");
     } finally {
       setUpdating(false);
     }
