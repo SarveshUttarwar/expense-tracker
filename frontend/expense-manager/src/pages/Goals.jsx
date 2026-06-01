@@ -134,11 +134,18 @@ export default function Goals() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
 
+  const currentDate = new Date();
+  const currentMonthVal = currentDate.getMonth() + 1;
+  const currentYearVal = currentDate.getFullYear();
+  const isPastMonth = year < currentYearVal || (year === currentYearVal && month < currentMonthVal);
+
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [visualization, setVisualization] = useState("progress");
   const [trendData, setTrendData] = useState([]);
   const [trendLoading, setTrendLoading] = useState(false);
+  const [yearlyData, setYearlyData] = useState([]);
+  const [yearlyLoading, setYearlyLoading] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
   const filteredGoals = filterCategoryId
@@ -200,6 +207,53 @@ export default function Goals() {
     }
   };
 
+  const loadYearlySuccessData = async () => {
+    if (!userId) return;
+    setYearlyLoading(true);
+    try {
+      const monthsArray = Array.from({ length: 12 }, (_, i) => i + 1);
+      const monthlySummaries = await Promise.all(
+        monthsArray.map(async (m) => {
+          const res = await getGoalsSummary(userId, m, year);
+          const categoryFilteredGoals = filterCategoryId
+            ? res.filter(g => g.category.toLowerCase() === filterCategoryId.toLowerCase())
+            : res;
+
+          let goalsSet = categoryFilteredGoals.length;
+          let goalsMet = 0;
+
+          categoryFilteredGoals.forEach((g) => {
+            const isSavings = ["savings", "saving"].includes(g.category.toLowerCase());
+            if (isSavings) {
+              if (g.spent >= g.goal) {
+                goalsMet++;
+              }
+            } else {
+              if (g.spent <= g.goal) {
+                goalsMet++;
+              }
+            }
+          });
+
+          const successRatio = goalsSet > 0 ? Math.round((goalsMet / goalsSet) * 100) : 0;
+
+          return {
+            month: m,
+            monthName: months[m - 1],
+            goalsSet,
+            goalsMet,
+            successRatio,
+          };
+        })
+      );
+      setYearlyData(monthlySummaries);
+    } catch (err) {
+      console.error("Failed to load yearly success data:", err);
+    } finally {
+      setYearlyLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId) {
       navigate("/");
@@ -212,6 +266,8 @@ export default function Goals() {
   useEffect(() => {
     if (visualization === "trend") {
       loadTrendData();
+    } else if (visualization === "yearly_success") {
+      loadYearlySuccessData();
     }
   }, [userId, month, year, visualization, filterCategoryId]);
 
@@ -377,6 +433,7 @@ export default function Goals() {
                 <option value="bar">Bar Chart</option>
                 <option value="line">Line Graph</option>
                 <option value="trend">Monthly Trend Comparison</option>
+                <option value="yearly_success">Yearly Success Ratio</option>
               </select>
             </div>
           </div>
@@ -546,6 +603,32 @@ export default function Goals() {
                           <span>Total: <span className="text-slate-700 dark:text-zinc-300">₹{g.goal}</span></span>
                         </div>
                       )}
+
+                      {isPastMonth && (
+                        <div className={`mt-4 px-3.5 py-2.5 rounded-2xl border text-xs font-semibold ${
+                          isSavings 
+                            ? (g.spent >= g.goal
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400")
+                            : (g.spent <= g.goal
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400")
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">
+                              {isSavings 
+                                ? (g.spent >= g.goal ? "🎉" : "⚠️") 
+                                : (g.spent <= g.goal ? "🎉" : "⚠️")}
+                            </span>
+                            <span>
+                              {isSavings
+                                ? (g.spent >= g.goal ? "Success! Savings target met." : "Savings target was not fully met.")
+                                : (g.spent <= g.goal ? "Success! Spent within budget limit." : "You are overspending in this category, be mindful.")
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -703,8 +786,134 @@ export default function Goals() {
                 )}
               </div>
             )}
+
+            {visualization === "yearly_success" && (
+              <div className="space-y-8 animate-in fade-in duration-300">
+                {yearlyLoading ? (
+                  <div className="flex h-64 items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                      <p className="text-slate-500 dark:text-zinc-400 font-medium animate-pulse">Calculating success ratios...</p>
+                    </div>
+                  </div>
+                ) : (() => {
+                  const totalSet = yearlyData.reduce((acc, d) => acc + d.goalsSet, 0);
+                  const totalMet = yearlyData.reduce((acc, d) => acc + d.goalsMet, 0);
+                  const yearlySuccessRatio = totalSet > 0 ? Math.round((totalMet / totalSet) * 100) : 0;
+                  
+                  return (
+                    <>
+                      {/* Yearly Summary Header Card */}
+                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-600/20">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                        
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
+                          <div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-200 bg-white/15 px-3 py-1 rounded-full">
+                              Yearly Performance Summary
+                            </span>
+                            <h3 className="text-3xl font-black mt-3">Year {year} Goal Success</h3>
+                            <p className="text-indigo-100 mt-2 max-w-md text-sm font-medium">
+                              Track the ratio of budget and saving goals successfully met throughout the year. Keep expenditure within target and hit your savings goals!
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-6 bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10">
+                            <div className="relative flex items-center justify-center w-20 h-20 rounded-full border-4 border-white/20">
+                              <span className="text-2xl font-black">{totalSet > 0 ? yearlySuccessRatio : 0}%</span>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Overall success ratio</p>
+                              <p className="text-2xl font-black mt-0.5">{totalMet} / {totalSet}</p>
+                              <p className="text-xs text-indigo-100 mt-0.5 font-medium">Goals Met / Goals Set</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3x4 grid for monthly breakdowns */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {yearlyData.map((d) => {
+                          const monthSuccessPercent = d.goalsSet > 0 ? d.successRatio : 0;
+                          const hasGoals = d.goalsSet > 0;
+                          let progressColor = "from-slate-450 to-slate-550";
+                          let ringColor = "border-slate-100 dark:border-zinc-800";
+                          let textColor = "text-slate-500";
+                          let bgBadgeColor = "bg-slate-100 dark:bg-zinc-800/50 text-slate-600 dark:text-zinc-400";
+                          
+                          if (hasGoals) {
+                            if (monthSuccessPercent >= 80) {
+                              progressColor = "from-emerald-400 to-emerald-500";
+                              ringColor = "border-emerald-100 dark:border-emerald-950/30";
+                              textColor = "text-emerald-600 dark:text-emerald-400";
+                              bgBadgeColor = "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+                            } else if (monthSuccessPercent >= 50) {
+                              progressColor = "from-indigo-400 to-indigo-500";
+                              ringColor = "border-indigo-100 dark:border-indigo-950/30";
+                              textColor = "text-indigo-600 dark:text-indigo-400";
+                              bgBadgeColor = "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400";
+                            } else {
+                              progressColor = "from-rose-400 to-rose-500";
+                              ringColor = "border-rose-100 dark:border-rose-950/30";
+                              textColor = "text-rose-600 dark:text-rose-400";
+                              bgBadgeColor = "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-450";
+                            }
+                          }
+
+                          return (
+                            <div
+                              key={d.month}
+                              className={`group relative overflow-hidden rounded-3xl p-5 border bg-white dark:bg-zinc-900 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 transition-all shadow-sm hover:shadow-md`}
+                            >
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <h4 className="font-bold text-base text-slate-800 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                    {d.monthName}
+                                  </h4>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 uppercase tracking-wider ${bgBadgeColor}`}>
+                                    {hasGoals ? `${monthSuccessPercent}% Success` : "No Goals"}
+                                  </span>
+                                </div>
+                                
+                                {hasGoals && (
+                                  <div className={`flex items-center justify-center w-11 h-11 rounded-full border-4 ${ringColor}`}>
+                                    <span className={`text-[11px] font-black ${textColor}`}>
+                                      {monthSuccessPercent}%
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="space-y-3 mt-2">
+                                <div className="flex justify-between text-xs font-medium text-slate-500 dark:text-zinc-400">
+                                  <span>Goals Set:</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{d.goalsSet}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-medium text-slate-500 dark:text-zinc-400">
+                                  <span>Goals Met:</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{d.goalsMet}</span>
+                                </div>
+                              </div>
+
+                              {hasGoals && (
+                                <div className="mt-4 h-1.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full bg-gradient-to-r ${progressColor} transition-all duration-700 ease-out`}
+                                    style={{ width: `${monthSuccessPercent}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
-        )}}
+        )}
       </main>
     </div>
   );
