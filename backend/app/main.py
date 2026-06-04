@@ -63,8 +63,8 @@ def add_expense(expense: ExpenseCreate):
     return {"message": "Expense added successfully"}
 
 @app.get("/expenses")
-def list_expenses(user_id: int):
-    return crud.get_expenses(user_id)
+def list_expenses(user_id: int, month: Optional[int] = Query(None), year: Optional[int] = Query(None)):
+    return crud.get_expenses(user_id, month, year)
 
 @app.post("/goals")
 def save_goal(goal: GoalCreate):

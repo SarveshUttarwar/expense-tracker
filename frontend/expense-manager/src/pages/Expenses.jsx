@@ -11,6 +11,11 @@ import {
   deleteExpense,
 } from "../services/api";
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 export default function Expenses() {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
@@ -18,10 +23,16 @@ export default function Expenses() {
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
 
+  // Default to current month/year
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
   const [transactions, setTransactions] = useState([]);
+  const [loadingTx, setLoadingTx] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  // Real categories loaded from backend (not hardcoded!)
+  // Real categories loaded from backend
   const [categories, setCategories] = useState([]);
 
   const [form, setForm] = useState({
@@ -40,9 +51,14 @@ export default function Expenses() {
       navigate("/");
       return;
     }
-    loadTransactions();
     loadCategories();
   }, [userId, navigate]);
+
+  // Re-fetch whenever month or year changes
+  useEffect(() => {
+    if (!userId) return;
+    loadTransactions();
+  }, [userId, selectedMonth, selectedYear]);
 
   const loadCategories = async () => {
     try {
@@ -54,8 +70,15 @@ export default function Expenses() {
   };
 
   const loadTransactions = async () => {
-    const data = await getExpenses(userId);
-    setTransactions(data);
+    setLoadingTx(true);
+    try {
+      const data = await getExpenses(userId, selectedMonth, selectedYear);
+      setTransactions(data);
+    } catch (err) {
+      showNotification("Failed to load transactions", "error");
+    } finally {
+      setLoadingTx(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -64,7 +87,7 @@ export default function Expenses() {
       message: "Are you sure you want to delete this transaction?",
       confirmLabel: "Delete",
       cancelLabel: "Cancel",
-      type: "danger"
+      type: "danger",
     });
     if (!isConfirmed) return;
     try {
@@ -127,13 +150,39 @@ export default function Expenses() {
     }
   };
 
+  // Build a range of years: current year back 5 years
+  const yearOptions = Array.from({ length: 6 }, (_, i) => now.getFullYear() - i);
+
+  const isCurrentMonth =
+    selectedMonth === now.getMonth() + 1 && selectedYear === now.getFullYear();
+
+  const navigatePrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
+    }
+  };
+
+  const navigateNextMonth = () => {
+    // Don't allow going beyond current month
+    if (isCurrentMonth) return;
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Sidebar />
 
       <main className="flex-1 p-6 pb-24 md:p-8 lg:p-10 overflow-y-auto">
         {/* HEADER */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
             <p className="mt-1 text-slate-500 dark:text-zinc-400 font-medium">
@@ -142,10 +191,88 @@ export default function Expenses() {
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/40 transition-all flex items-center gap-2"
+            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/40 transition-all flex items-center gap-2 self-start sm:self-auto"
           >
             {showForm ? "✕ Cancel" : "+ Add New"}
           </button>
+        </div>
+
+        {/* MONTH SELECTOR */}
+        <div className="mb-6 flex items-center justify-between gap-3 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+          <div className="flex items-center gap-3">
+            {/* Prev month arrow */}
+            <button
+              onClick={navigatePrevMonth}
+              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white"
+              title="Previous month"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            {/* Month + Year selectors */}
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+              >
+                {MONTH_NAMES.map((name, i) => (
+                  <option key={i} value={i + 1}>{name}</option>
+                ))}
+              </select>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Next month arrow */}
+            <button
+              onClick={navigateNextMonth}
+              disabled={isCurrentMonth}
+              className={`p-2 rounded-xl transition-colors ${
+                isCurrentMonth
+                  ? "text-slate-300 dark:text-zinc-700 cursor-not-allowed"
+                  : "hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white"
+              }`}
+              title={isCurrentMonth ? "Already at current month" : "Next month"}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* "Jump to today" pill */}
+            {!isCurrentMonth && (
+              <button
+                onClick={() => {
+                  setSelectedMonth(now.getMonth() + 1);
+                  setSelectedYear(now.getFullYear());
+                }}
+                className="px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+              >
+                Back to This Month
+              </button>
+            )}
+
+            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+              isCurrentMonth
+                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"
+            }`}>
+              {isCurrentMonth ? "📅 Current Month" : `📋 ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
+            </span>
+          </div>
         </div>
 
         {/* ADD FORM */}
@@ -283,64 +410,72 @@ export default function Expenses() {
 
         {/* TRANSACTIONS TABLE */}
         <div className="overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50/50 dark:bg-zinc-800/20 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-zinc-400">
-              <tr>
-                <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Date</th>
-                <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Type</th>
-                <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Category</th>
-                <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Amount</th>
-                <th className="p-4 text-right font-bold uppercase tracking-wider text-xs">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((t) => (
-                <tr
-                  key={t.id}
-                  className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors"
-                >
-                  <td className="p-4 text-slate-600 dark:text-zinc-300 font-medium">{t.expense_date}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${t.type === 'saving' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}`}>
-                      {t.type}
-                    </span>
-                  </td>
-                  <td className="p-4 text-slate-600 dark:text-zinc-300">
-                    {t.type === "saving" ? "-" : t.category}
-                  </td>
-                  <td
-                    className={`p-4 font-bold ${t.type === "saving" ? "text-emerald-500" : "text-rose-500"}`}
-                  >
-                    {t.type === "saving" ? "+" : "-"}₹{t.amount}
-                  </td>
-                  <td className="p-4 text-right">
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
-                      title="Delete"
-                    >
-                      🗑️
-                    </button>
-                  </td>
-                </tr>
-              ))}
-
-              {transactions.length === 0 && (
+          {loadingTx ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+              <p className="text-slate-500 dark:text-zinc-400 font-medium animate-pulse">
+                Loading transactions for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}...
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50/50 dark:bg-zinc-800/20 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-zinc-400">
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="p-8 text-center text-slate-500 dark:text-zinc-500"
-                  >
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <span className="text-4xl mb-2">🍃</span>
-                      <p className="font-medium">No transactions found</p>
-                      <p className="text-xs">Click "+ Add New" to create one.</p>
-                    </div>
-                  </td>
+                  <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Date</th>
+                  <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Type</th>
+                  <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Category</th>
+                  <th className="p-4 text-left font-bold uppercase tracking-wider text-xs">Amount</th>
+                  <th className="p-4 text-right font-bold uppercase tracking-wider text-xs">Action</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {transactions.map((t) => (
+                  <tr
+                    key={t.id}
+                    className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors"
+                  >
+                    <td className="p-4 text-slate-600 dark:text-zinc-300 font-medium">{t.expense_date}</td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${t.type === 'saving' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                        {t.type}
+                      </span>
+                    </td>
+                    <td className="p-4 text-slate-600 dark:text-zinc-300">
+                      {t.type === "saving" ? "-" : t.category}
+                    </td>
+                    <td className={`p-4 font-bold ${t.type === "saving" ? "text-emerald-500" : "text-rose-500"}`}>
+                      {t.type === "saving" ? "+" : "-"}₹{t.amount}
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {transactions.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="p-8 text-center text-slate-500 dark:text-zinc-500">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <span className="text-4xl mb-2">🍃</span>
+                        <p className="font-medium">No transactions for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}</p>
+                        <p className="text-xs">
+                          {isCurrentMonth
+                            ? 'Click "+ Add New" to log your first transaction this month.'
+                            : "No records found for this period."}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
     </div>

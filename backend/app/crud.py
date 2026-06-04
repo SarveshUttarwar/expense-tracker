@@ -149,29 +149,49 @@ def create_expense(expense):
             db.close()
 
 
-def get_expenses(user_id):
+def get_expenses(user_id, month=None, year=None):
     db = None
     cursor = None
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        cursor.execute(
-            """
-            SELECT
-                e.id,
-                e.expense_date,
-                e.type,
-                e.amount,
-                e.description,
-                c.name AS category
-            FROM expenses e
-            LEFT JOIN categories c ON e.category_id = c.id
-            WHERE e.user_id = %s
-            ORDER BY e.expense_date DESC
-            """,
-            (user_id,),
-        )
+        if month and year:
+            cursor.execute(
+                """
+                SELECT
+                    e.id,
+                    e.expense_date,
+                    e.type,
+                    e.amount,
+                    e.description,
+                    c.name AS category
+                FROM expenses e
+                LEFT JOIN categories c ON e.category_id = c.id
+                WHERE e.user_id = %s
+                  AND MONTH(e.expense_date) = %s
+                  AND YEAR(e.expense_date) = %s
+                ORDER BY e.expense_date DESC
+                """,
+                (user_id, month, year),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT
+                    e.id,
+                    e.expense_date,
+                    e.type,
+                    e.amount,
+                    e.description,
+                    c.name AS category
+                FROM expenses e
+                LEFT JOIN categories c ON e.category_id = c.id
+                WHERE e.user_id = %s
+                ORDER BY e.expense_date DESC
+                """,
+                (user_id,),
+            )
         return cursor.fetchall()
     finally:
         if cursor:

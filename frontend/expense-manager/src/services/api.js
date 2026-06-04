@@ -36,8 +36,11 @@ export async function resetPassword(username, newPassword) {
   return res.json();
 }
 
-export async function getExpenses(userId) {
-  const res = await fetch(`${BASE_URL}/expenses?user_id=${userId}`);
+export async function getExpenses(userId, month = null, year = null) {
+  let url = `${BASE_URL}/expenses?user_id=${userId}`;
+  if (month) url += `&month=${month}`;
+  if (year) url += `&year=${year}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch expenses");
   return res.json();
 }
